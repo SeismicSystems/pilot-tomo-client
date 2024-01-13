@@ -1,0 +1,14 @@
+{
+  "name": "pilot-tomo-client",
+  "version": "0.0.1",
+  "main": "index.js",
+  "scripts": {
+    "dev": "ts-node client.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.5",
+    "dotenv": "^16.3.1"
+  }
+}
