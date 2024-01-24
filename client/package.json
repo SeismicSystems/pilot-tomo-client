@@ -1,14 +1,24 @@
 {
-  "name": "pilot-tomo-client",
-  "version": "0.0.1",
-  "main": "index.js",
-  "scripts": {
-    "dev": "ts-node client.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "license": "MIT",
-  "dependencies": {
-    "axios": "^1.6.5",
-    "dotenv": "^16.3.1"
-  }
+    "name": "client",
+    "version": "1.0.0",
+    "description": "",
+    "main": "client.ts",
+    "type": "module",
+    "scripts": {
+        "listen": "pnpm tsx ./src/listen.ts",
+        "dev": "pnpm tsx ./src/client.ts"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "axios": "^1.6.5",
+        "viem": "^1.19.15"
+    },
+    "devDependencies": {
+        "dotenv": "^16.4.0",
+        "@types/node": "^20.10.4",
+        "tsx": "^4.6.2",
+        "typescript": "^5.3.3"
+    }
 }
