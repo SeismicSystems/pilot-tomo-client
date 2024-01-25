@@ -12,7 +12,15 @@ contract Swipe {
         seismicDA = _seismicDA;
     }
 
-    function swipe(uint256 commitment) public {
+    function swipe(
+        uint256 commitment,
+        Signature memory sig
+    ) public verifySeismicSig(sig) {
         emit RegisteredSwipe(commitment);
+    }
+
+    modifier verifySeismicSig(Signature memory sig) {
+        // [TODO] add require statement
+        _;
     }
 }

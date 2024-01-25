@@ -85,12 +85,20 @@ async function registerSwipe(
     swipeCommitment: string,
     daSignature: string
 ) {
-    console.log(hexToSignature(daSignature));
-
+    const unpackedSig = hexToSignature(daSignature);
+    const structuredSig = {
+        v: unpackedSig.v,
+        r: unpackedSig.r,
+        s: unpackedSig.s,
+        b: 0,
+    };
     let [res, err] = await handleAsync(
-        contractSender.write.swipe([BigInt(`0x${swipeCommitment}`)])
+        contractSender.write.swipe([
+            BigInt(`0x${swipeCommitment}`),
+            structuredSig,
+        ])
     );
-    if (!res || err) {
+    if (res === null || err) {
         throw new Error(`Error registering swipe: ${err}`);
     }
 }
@@ -118,6 +126,11 @@ async function swipe(
         BigInt(`0x${process.env.WALLET1_PRIVKEY}`),
         DEMO_CONFIG.numWallets
     );
-
+    // for (const [sender, recipient] of DEMO_CONFIG.likes) {
+    //   swipe(contracts[sender], walletClients[sender], walletClients[recipient], true);
+    // }
+    // for (const [sender, recipient] of DEMO_CONFIG.dislikes) {
+    //   swipe(contracts[sender], walletClients[sender], walletClients[recipient], false);
+    // }
     swipe(contracts[0], walletClients[0], walletClients[1], true);
 })();
