@@ -9,6 +9,7 @@ import {
     handleAsync,
     signTypedData,
     stringifyBigInts,
+    sampleBlind,
 } from "./lib/utils";
 import { swipeDAReqTyped } from "./lib/types";
 
@@ -39,7 +40,7 @@ async function nonce(walletClient: any) {
         }
     );
     if (response.status !== 200) {
-        throw Exception(
+        throw new Error(
             "Could not get nonce for address",
             walletClient.account.address
         );
@@ -58,9 +59,7 @@ async function davail(
         body: {
             recipient: walletClientSender.account.address,
             positive: positive,
-            blind: BigInt(
-                "0x218567f2b3067cb681590e3dc644fcfdc9e26020395bc80677ee270b95686d1d"
-            ),
+            blind: sampleBlind(),
         },
     };
     const signature = await signTypedData(
@@ -76,12 +75,28 @@ async function davail(
         signature,
     });
     if (response.status !== 200) {
-        throw Exception("Could not acquire data availability signature.");
+        throw new Error("Could not acquire data availability signature");
     }
     return [response.data.commitment, response.data.signature];
 }
 
+async function registerSwipe(
+    contractSender: any,
+    swipeCommitment: string,
+    daSignature: string
+) {
+    console.log(hexToSignature(daSignature));
+
+    let [res, err] = await handleAsync(
+        contractSender.write.swipe([BigInt(`0x${swipeCommitment}`)])
+    );
+    if (!res || err) {
+        throw new Error(`Error registering swipe: ${err}`);
+    }
+}
+
 async function swipe(
+    contractSender: any,
     walletClientSender: any,
     walletClientRecipient: any,
     positive: boolean
@@ -91,7 +106,7 @@ async function swipe(
         walletClientRecipient,
         positive
     );
-    console.log(swipeCommitment, daSignature);
+    registerSwipe(contractSender, swipeCommitment, daSignature);
 }
 
 (async () => {
@@ -104,40 +119,5 @@ async function swipe(
         DEMO_CONFIG.numWallets
     );
 
-    swipe(walletClients[0], walletClients[1], true);
-
-    // console.log(hexToSignature(signature));
-
-    // return request(app.getServer())
-    //     .post(`${swipeController.path}/davail`)
-    //     .send({ tx: stringifyBigInts(tx), signature })
-    //     .expect(200)
-    //     .then(async (res) => {
-    //         expect(
-    //             await recoverTypedMessageAddress(
-    //                 res.body.signature,
-    //                 swipeDAResTyped.types,
-    //                 swipeDAResTyped.label,
-    //                 swipeDAResTyped.domain,
-    //                 {
-    //                     value: BigInt(`0x${res.body.commitment}`).toString(),
-    //                 }
-    //             )
-    //         ).toEqual(`0x${process.env.SEQUENCER_ADDR}`);
-    //     });
-
-    // let [res, err] = await handleAsync(contract1.write.swipe(["2"]));
-    // if (!res || err) {
-    //     console.error("[ERROR] Could not register swipe: ", err);
-    //     process.exit(1);
-    // }
+    swipe(contracts[0], walletClients[0], walletClients[1], true);
 })();
-
-// (async () => {
-//   try {
-//     const nonce = await getNonce("0xfff");
-//     console.log("NONCE", nonce);
-//   } catch (error) {
-//     console.error(error);
-//   }
-// })();

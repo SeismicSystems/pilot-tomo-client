@@ -6,6 +6,7 @@ import {
     http,
     parseAbiItem,
 } from "viem";
+import crypto from "crypto";
 import { foundry } from "viem/chains";
 import { privateKeyToAccount } from "viem/accounts";
 import { getMessage } from "eip-712";
@@ -20,7 +21,7 @@ export const EventABIs = {
 /*
  * Sets up a contract interface with Viem.
  */
-function contractInterfaceSetup(privKey: string): [any, any, any] {
+export function contractInterfaceSetup(privKey: string): [any, any, any] {
     const account = privateKeyToAccount(`0x${privKey}`);
     const walletClient = createWalletClient({
         account,
@@ -61,6 +62,12 @@ export function setUpContractInterfaces(
     return [walletClients, publicClients, contracts];
 }
 
+/*
+ * Samples a random 256 bit value.
+ */
+export function sampleBlind(): bigint {
+    return BigInt(`0x${crypto.randomBytes(32).toString("hex")}`);
+}
 
 /*
  * Wrapper for error handling for promises.
