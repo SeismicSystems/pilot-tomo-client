@@ -6,7 +6,7 @@ import { EventABIs, contractInterfaceSetup } from "./lib/utils";
 /*
  * Prints all Swipe events to stdout as they come.
  */
-let [walletClient, publicClient, contract] = contractInterfaceSetup(
+let [_, publicClient, contract] = contractInterfaceSetup(
     process.env.DEV_PRIVKEY || ""
 );
 Object.values(EventABIs).forEach((abi) => {
