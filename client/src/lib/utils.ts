@@ -41,7 +41,7 @@ export function contractInterfaceSetup(privKey: string): [any, any, any] {
     return [walletClient, publicClient, contract];
 }
 
-export function setUpContractInterfaces(
+export async function setUpContractInterfaces(
     seedPriv: BigInt,
     numWallets: number
 ): [any[], any[], any[]] {
@@ -57,6 +57,13 @@ export function setUpContractInterfaces(
         walletClients.push(walletClient);
         publicClients.push(publicClient);
         contracts.push(contract);
+        if (i > 0) {
+            await walletClient.sendTransaction({
+                account: walletClients[0].account,
+                to: walletClients[i].account.address,
+                value: 1000000000000000000n,
+            });
+        }
     }
 
     return [walletClients, publicClients, contracts];
@@ -102,6 +109,10 @@ export async function signTypedData(
         account,
         message: messageHash,
     });
+}
+
+export function sleep(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export function hashTypedData(

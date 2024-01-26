@@ -10,8 +10,9 @@ import {
     signTypedData,
     stringifyBigInts,
     sampleBlind,
+    sleep,
 } from "./lib/utils";
-import { swipeDAReqTyped } from "./lib/types";
+import { swipeDAReqTyped, swipeMatchTyped } from "./lib/types";
 
 const DEMO_CONFIG = {
     numWallets: 5,
@@ -122,15 +123,51 @@ async function swipe(
         throw new Error("Please set demo privkey env variable.");
     }
 
-    const [walletClients, publicClients, contracts] = setUpContractInterfaces(
-        BigInt(`0x${process.env.WALLET1_PRIVKEY}`),
-        DEMO_CONFIG.numWallets
+    const [walletClients, publicClients, contracts] =
+        await setUpContractInterfaces(
+            BigInt(`0x${process.env.WALLET1_PRIVKEY}`),
+            DEMO_CONFIG.numWallets
+        );
+
+    for (const [sender, recipient] of DEMO_CONFIG.likes) {
+        console.log(sender, recipient);
+        swipe(
+            contracts[sender],
+            walletClients[sender],
+            walletClients[recipient],
+            true
+        );
+        await sleep(1000);
+    }
+    for (const [sender, recipient] of DEMO_CONFIG.dislikes) {
+        swipe(
+            contracts[sender],
+            walletClients[sender],
+            walletClients[recipient],
+            false
+        );
+    }
+
+    const senderNonce = await nonce(walletClients[1]);
+    const tx = {
+        nonce: BigInt(senderNonce).toString(),
+        body: {
+            startIndex: 0,
+        },
+    };
+    const signature = await signTypedData(
+        walletClients[1],
+        walletClients[1].account,
+        swipeMatchTyped.types,
+        `${swipeMatchTyped.label}Tx`,
+        swipeMatchTyped.domain,
+        tx
     );
-    // for (const [sender, recipient] of DEMO_CONFIG.likes) {
-    //   swipe(contracts[sender], walletClients[sender], walletClients[recipient], true);
-    // }
-    // for (const [sender, recipient] of DEMO_CONFIG.dislikes) {
-    //   swipe(contracts[sender], walletClients[sender], walletClients[recipient], false);
-    // }
-    swipe(contracts[0], walletClients[0], walletClients[1], true);
+    const response = await axios.get(`${process.env.ENDPOINT}/swipe/matches`, {
+        data: {
+            tx: stringifyBigInts(tx),
+            signature,
+        },
+    });
+    console.log(response.data);
 })();
