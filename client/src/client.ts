@@ -15,8 +15,9 @@ import {
 import { swipeDAReqTyped, swipeMatchTyped } from "./lib/types";
 
 const DEMO_CONFIG = {
+    // We use this many wallets for the demo.
     numWallets: 5,
-    // symmetric likes for [0, 1] && [0, 2] && [1, 2] should match
+    // Symmetric likes for [0, 1] && [0, 2] && [1, 2] should lead to matches.
     likes: [
         [0, 1],
         [1, 0],
@@ -27,10 +28,14 @@ const DEMO_CONFIG = {
         [0, 3],
         [1, 4],
     ],
-    // asymmetric likes for [0, 3] && [1, 4] should not match
+    // Asymmetric likes for [0, 3] && [1, 4] should not lead to matches.
     dislikes: [[3, 0]],
 };
 
+/*
+ * Seismic tracks a nonce for each wallet to avoid replay attacks. Note this is
+ * NOT the nonce that Ethereum tracks for the wallet.
+ */
 async function nonce(walletClient: any) {
     const response = await axios.get(
         `${process.env.ENDPOINT}/authentication/nonce`,
@@ -49,6 +54,11 @@ async function nonce(walletClient: any) {
     return response.data.nonce;
 }
 
+/*
+ * Seismic must be alerted of the intended swipe prior to posting it on-chain.
+ * This is enforced via a data availability signaturew which is checked in the
+ * contract.
+ */
 async function davail(
     walletClientSender: any,
     walletClientRecipient: any,
@@ -81,6 +91,12 @@ async function davail(
     return [response.data.commitment, response.data.signature];
 }
 
+/*
+ * Registers a swipe directly to the chain by sending the hiding commitment.
+ * Note that though this requires a data availability signature from Seismic,
+ * the user is registering the swipe themselves. Seismic is not acting on the
+ * user's behalf.
+ */
 async function registerSwipe(
     contractSender: any,
     swipeCommitment: string,
@@ -104,6 +120,23 @@ async function registerSwipe(
     }
 }
 
+/*
+ * Checks whether the matches provided by Seismic are true to what the user
+ * registerd on-chain. Removes the trust assumption on Seismic for providing
+ * honest swipes.
+ *
+ * Though state provenance is not the primary use-case of Tomo's blockchain
+ * component (composability is), this is still a good step to do, especially
+ * as more of Tomo's workflow transitions on-chain.
+ */
+async function verifyCounterpartySwipes(matches: any) {
+    // [TODO]
+}
+
+/*
+ * Fetches matches of a wallet from Seismic and checks whether they're
+ * consistent with what's actually shown on-chain.
+ */
 async function matches(walletClient: any) {
     const senderNonce = await nonce(walletClient);
     const tx = {
@@ -129,9 +162,14 @@ async function matches(walletClient: any) {
     if (response.status !== 200) {
         throw new Error("Could not request matches.");
     }
+    await verifyCounterpartySwipes(response.data);
     return response.data;
 }
 
+/*
+ * Having a "sender" swipe on a "recipient" requires the data availability
+ * share with Seismic before going directly from the client to the chain.
+ */
 async function swipe(
     contractSender: any,
     walletClientSender: any,
@@ -146,6 +184,11 @@ async function swipe(
     registerSwipe(contractSender, swipeCommitment, daSignature);
 }
 
+/*
+ * Simulates wallet interactions specified in DEMO_CONFIG. Runs through the
+ * Seismic flow for each swipe, then logs the matches that were confirmed
+ * on-chain.
+ */
 async function runDemo() {
     console.log("== Initializing demo wallets");
     const [walletClients, publicClients, contracts] =
