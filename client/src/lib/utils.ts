@@ -14,6 +14,9 @@ import { getMessage } from "eip-712";
 import SwipeAPI from "../../../contract/out/Swipe.sol/Swipe.json" assert { type: "json" };
 import deploy from "../../../contract/out/deploy.json" assert { type: "json" };
 
+/*
+ * ABIs for all events on the contract that we are interested in listening for.
+ */
 export const EventABIs = {
     RegisteredSwipe: parseAbiItem(
         "event RegisteredSwipe(address owner, uint256 commitment)"
@@ -21,7 +24,7 @@ export const EventABIs = {
 };
 
 /*
- * Sets up a contract interface with Viem.
+ * Sets up an interface with the Swipe contract using Viem.
  */
 export function contractInterfaceSetup(privKey: string): [any, any, any] {
     const account = privateKeyToAccount(`0x${privKey}`);
@@ -43,6 +46,10 @@ export function contractInterfaceSetup(privKey: string): [any, any, any] {
     return [walletClient, publicClient, contract];
 }
 
+/*
+ * Sets up multiple wallets and interfaces derived from a seed private key.
+ * Also handles dripping these wallets with 1ETH each to pay for gas.
+ */
 export async function setUpContractInterfaces(
     seedPriv: BigInt,
     numWallets: number
@@ -72,32 +79,8 @@ export async function setUpContractInterfaces(
 }
 
 /*
- * Samples a random 256 bit value.
+ * Sign typed data according to EIP712.
  */
-export function sampleBlind(): bigint {
-    return BigInt(`0x${crypto.randomBytes(32).toString("hex")}`);
-}
-
-/*
- * Wrapper for error handling for promises.
- */
-export async function handleAsync<T>(
-    promise: Promise<T>
-): Promise<[T, null] | [null, any]> {
-    try {
-        const data = await promise;
-        return [data, null];
-    } catch (error) {
-        return [null, error];
-    }
-}
-
-function uint8ArrayToHexString(byteArray: Uint8Array): string {
-    return Array.from(byteArray, function (byte) {
-        return ("0" + (byte & 0xff).toString(16)).slice(-2);
-    }).join("");
-}
-
 export async function signTypedData(
     walletClient: any,
     account: PrivateKeyAccount,
@@ -113,10 +96,9 @@ export async function signTypedData(
     });
 }
 
-export function sleep(ms: number) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
+/*
+ * Hash typed data according to EIP712.
+ */
 export function hashTypedData(
     types: EIP712Types,
     primaryType: string,
@@ -136,6 +118,23 @@ export function hashTypedData(
     );
 }
 
+/*
+ * Samples a random 256 bit value. Uses cryptographically secure randomness.
+ */
+export function sampleBlind(): bigint {
+    return BigInt(`0x${crypto.randomBytes(32).toString("hex")}`);
+}
+
+/*
+ * Await this function to block execution for ms milliseconds.
+ */
+export function sleep(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/*
+ * Stringifies all BigInts in a nested object.
+ */
 export function stringifyBigInts(obj: any): any {
     if (typeof obj !== "object") {
         if (typeof obj === "bigint") {
@@ -148,4 +147,27 @@ export function stringifyBigInts(obj: any): any {
         newObj[key] = stringifyBigInts(newObj[key]);
     }
     return newObj;
+}
+
+/*
+ * Wrapper for error handling for promises.
+ */
+export async function handleAsync<T>(
+    promise: Promise<T>
+): Promise<[T, null] | [null, any]> {
+    try {
+        const data = await promise;
+        return [data, null];
+    } catch (error) {
+        return [null, error];
+    }
+}
+
+/*
+ * Convert a uint8 array to a hex string.
+ */
+function uint8ArrayToHexString(byteArray: Uint8Array): string {
+    return Array.from(byteArray, function (byte) {
+        return ("0" + (byte & 0xff).toString(16)).slice(-2);
+    }).join("");
 }

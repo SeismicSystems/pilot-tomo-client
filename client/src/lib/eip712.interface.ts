@@ -1,10 +1,12 @@
+/*
+ * See eip-712 library for typescript to learn about the below interfaces.
+ */
 export interface EIP712DomainType {
     name: string;
     version: string | undefined;
     chainId: number;
     verifyingContract: string;
 }
-
 interface EIP712DomainTypeElement {
     name: string;
     type: string;
@@ -13,7 +15,6 @@ export interface EIP712Types {
     EIP712Domain: EIP712DomainTypeElement[];
     [key: string]: any;
 }
-
 export const EIP712DomainSpec = [
     { name: "name", type: "string" },
     { name: "version", type: "string" },
@@ -21,6 +22,11 @@ export const EIP712DomainSpec = [
     { name: "verifyingContract", type: "address" },
 ];
 
+/*
+ * Constructs a type object to be used for hashing typed data. Stored in the
+ * format that Seismic expects authenticated transactions to be in.
+ *
+ */
 export function createEIP712Types(
     bodyType: string,
     bodySpec: { name: string; type: string }[]
@@ -35,6 +41,9 @@ export function createEIP712Types(
     };
 }
 
+/*
+ * Type of the domain separator we choose to use at Seismic.
+ */
 export function createEIP712DomainType(name: string) {
     return {
         name,

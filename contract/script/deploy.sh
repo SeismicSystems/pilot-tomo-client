@@ -1,7 +1,7 @@
 source ../../.env
 
 : '
-  Run this script whenever you want to deploy a new swipe contract locally.
+  Run this script whenever you want to deploy a new Swipe contract locally.
   '
 
 RPC_URL=http://localhost:8545

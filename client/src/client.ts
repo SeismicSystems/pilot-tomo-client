@@ -227,7 +227,7 @@ async function runDemo() {
     console.log("==");
 
     // Give transactions time to confirm
-    await sleep(2000);
+    await sleep(5000);
 
     const displayWallet = 0;
     console.log(`== Fetching matches for sample wallet ${displayWallet}`);

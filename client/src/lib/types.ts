@@ -3,6 +3,10 @@ dotenv.config({ path: "../.env" });
 
 import { createEIP712Types, createEIP712DomainType } from "./eip712.interface";
 
+/*
+ * Used to sign messages with ETH privkey prior to sending packet to
+ * /swipe/davail endpoint.
+ */
 export const swipeDAReqTyped = {
     label: "SwipeReq",
     types: createEIP712Types("SwipeReq", [
@@ -13,6 +17,10 @@ export const swipeDAReqTyped = {
     domain: createEIP712DomainType("Tomo Swipe Data Availability Request"),
 };
 
+/*
+ * Used to sign messages with ETH privkey prior to sending packet to
+ * /swipe/matches endpoint.
+ */
 export const swipeMatchTyped = {
     label: "Match",
     types: createEIP712Types("Match", [{ name: "startIndex", type: "uint64" }]),

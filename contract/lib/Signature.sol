@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0;
 
+/*
+ * Structure of the ECDSA signature used by Ethereum.
+ */
 struct Signature {
     uint8 v;
     bytes32 r;
