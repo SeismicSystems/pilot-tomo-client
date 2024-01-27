@@ -15,7 +15,9 @@ import SwipeAPI from "../../../contract/out/Swipe.sol/Swipe.json" assert { type:
 import deploy from "../../../contract/out/deploy.json" assert { type: "json" };
 
 export const EventABIs = {
-    RegisteredSwipe: parseAbiItem("event RegisteredSwipe(uint256 commitment)"),
+    RegisteredSwipe: parseAbiItem(
+        "event RegisteredSwipe(address owner, uint256 commitment)"
+    ),
 };
 
 /*

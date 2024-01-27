@@ -6,7 +6,7 @@ import {Signature} from "../lib/Signature.sol";
 contract Swipe {
     address public seismicDA;
 
-    event RegisteredSwipe(uint256 commitment);
+    event RegisteredSwipe(address owner, uint256 commitment);
 
     constructor(address _seismicDA) {
         seismicDA = _seismicDA;
@@ -16,7 +16,7 @@ contract Swipe {
         uint256 commitment,
         Signature memory sig
     ) public verifySeismicSig(sig) {
-        emit RegisteredSwipe(commitment);
+        emit RegisteredSwipe(msg.sender, commitment);
     }
 
     modifier verifySeismicSig(Signature memory sig) {

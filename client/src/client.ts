@@ -58,7 +58,7 @@ async function davail(
     const tx = {
         nonce: BigInt(senderNonce).toString(),
         body: {
-            recipient: walletClientSender.account.address,
+            recipient: walletClientRecipient.account.address,
             positive: positive,
             blind: sampleBlind(),
         },
@@ -104,6 +104,34 @@ async function registerSwipe(
     }
 }
 
+async function matches(walletClient: any) {
+    const senderNonce = await nonce(walletClient);
+    const tx = {
+        nonce: BigInt(senderNonce).toString(),
+        body: {
+            startIndex: 0,
+        },
+    };
+    const signature = await signTypedData(
+        walletClient,
+        walletClient.account,
+        swipeMatchTyped.types,
+        `${swipeMatchTyped.label}Tx`,
+        swipeMatchTyped.domain,
+        tx
+    );
+    const response = await axios.get(`${process.env.ENDPOINT}/swipe/matches`, {
+        data: {
+            tx: stringifyBigInts(tx),
+            signature,
+        },
+    });
+    if (response.status !== 200) {
+        throw new Error("Could not request matches.");
+    }
+    return response.data;
+}
+
 async function swipe(
     contractSender: any,
     walletClientSender: any,
@@ -118,56 +146,55 @@ async function swipe(
     registerSwipe(contractSender, swipeCommitment, daSignature);
 }
 
-(async () => {
-    if (!process.env.WALLET1_PRIVKEY) {
-        throw new Error("Please set demo privkey env variable.");
-    }
-
+async function runDemo() {
+    console.log("== Initializing demo wallets");
     const [walletClients, publicClients, contracts] =
         await setUpContractInterfaces(
             BigInt(`0x${process.env.WALLET1_PRIVKEY}`),
             DEMO_CONFIG.numWallets
         );
+    for (const [index, walletClient] of walletClients.entries()) {
+        console.log(
+            `- Wallet #${index} address: ${walletClient.account.address}`
+        );
+    }
+    console.log("==");
 
+    console.log("== Simulating swipes");
     for (const [sender, recipient] of DEMO_CONFIG.likes) {
-        console.log(sender, recipient);
-        swipe(
+        await swipe(
             contracts[sender],
             walletClients[sender],
             walletClients[recipient],
             true
         );
-        await sleep(1000);
+        console.log(`- Registered "like" between [#${sender}, #${recipient}]`);
     }
     for (const [sender, recipient] of DEMO_CONFIG.dislikes) {
-        swipe(
+        await swipe(
             contracts[sender],
             walletClients[sender],
             walletClients[recipient],
             false
         );
+        console.log(
+            `- Registerd "dislike" between [#${sender}, #${recipient}]`
+        );
     }
+    console.log("==");
 
-    const senderNonce = await nonce(walletClients[1]);
-    const tx = {
-        nonce: BigInt(senderNonce).toString(),
-        body: {
-            startIndex: 0,
-        },
-    };
-    const signature = await signTypedData(
-        walletClients[1],
-        walletClients[1].account,
-        swipeMatchTyped.types,
-        `${swipeMatchTyped.label}Tx`,
-        swipeMatchTyped.domain,
-        tx
-    );
-    const response = await axios.get(`${process.env.ENDPOINT}/swipe/matches`, {
-        data: {
-            tx: stringifyBigInts(tx),
-            signature,
-        },
-    });
-    console.log(response.data);
+    // Give transactions time to confirm
+    await sleep(2000);
+
+    const displayWallet = 0;
+    console.log(`== Fetching matches for sample wallet ${displayWallet}`);
+    console.log(await matches(walletClients[displayWallet]));
+    console.log("==");
+}
+
+(async () => {
+    if (!process.env.WALLET1_PRIVKEY) {
+        throw new Error("Please set demo privkey env variable.");
+    }
+    await runDemo();
 })();
