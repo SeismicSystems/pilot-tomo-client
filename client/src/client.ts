@@ -63,7 +63,7 @@ async function davail(
     walletClientSender: any,
     walletClientRecipient: any,
     positive: boolean
-): [string, string] {
+): Promise<[string, string]> {
     const senderNonce = await nonce(walletClientSender);
     const tx = {
         nonce: BigInt(senderNonce).toString(),
@@ -102,7 +102,7 @@ async function registerSwipe(
     swipeCommitment: string,
     daSignature: string
 ) {
-    const unpackedSig = hexToSignature(daSignature);
+    const unpackedSig = hexToSignature(`0x${daSignature}`);
     const structuredSig = {
         v: unpackedSig.v,
         r: unpackedSig.r,
@@ -112,7 +112,9 @@ async function registerSwipe(
     let [res, err] = await handleAsync(
         contractSender.write.swipe([
             BigInt(`0x${swipeCommitment}`),
-            structuredSig,
+            structuredSig.v,
+            structuredSig.r,
+            structuredSig.s,
         ])
     );
     if (res === null || err) {
