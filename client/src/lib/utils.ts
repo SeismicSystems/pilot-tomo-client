@@ -8,11 +8,12 @@ import {
 } from "viem";
 import crypto from "crypto";
 import { foundry } from "viem/chains";
-import { privateKeyToAccount } from "viem/accounts";
+import { privateKeyToAccount, PrivateKeyAccount } from "viem/accounts";
 import { getMessage } from "eip-712";
 
 import SwipeAPI from "../../../contract/out/Swipe.sol/Swipe.json" assert { type: "json" };
 import deploy from "../../../contract/out/deploy.json" assert { type: "json" };
+import {EIP712DomainSpec, EIP712Types, EIP712DomainType} from "./eip712.interface";
 
 /*
  * ABIs for all events on the contract that we are interested in listening for.
@@ -51,15 +52,15 @@ export function contractInterfaceSetup(privKey: string): [any, any, any] {
  * Also handles dripping these wallets with 1ETH each to pay for gas.
  */
 export async function setUpContractInterfaces(
-    seedPriv: BigInt,
+    seedPriv: bigint,
     numWallets: number
-): [any[], any[], any[]] {
+): Promise<[any[], any[], any[]]> {
     let walletClients: any[] = [],
         publicClients: any[] = [],
         contracts: any[] = [];
 
     for (let i = 0; i < numWallets; i++) {
-        let freshPriv = seedPriv + BigInt(i);
+        let freshPriv = seedPriv+BigInt(i);
         const [walletClient, publicClient, contract] = contractInterfaceSetup(
             freshPriv.toString(16)
         );
