@@ -1,0 +1,22 @@
+
+services:
+  client:
+    build:
+        context: .
+        target: client-sepoliya
+    environment:
+      ENDPOINT: http://server:3001
+    networks:
+      - server
+      - default
+    healthcheck:
+     test: ["CMD", "cat", "/usr/src/app/contract/out/deploy.json"]
+     interval: 5s
+     timeout: 5s
+     retries: 3
+networks:
+  server:
+    name: tomo-server-network
+    external: true
+
+

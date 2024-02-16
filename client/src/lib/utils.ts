@@ -7,7 +7,7 @@ import {
     parseAbiItem,
 } from "viem";
 import crypto from "crypto";
-import { foundry } from "viem/chains";
+import { foundry, sepolia } from "viem/chains";
 import { privateKeyToAccount, PrivateKeyAccount } from "viem/accounts";
 import { getMessage } from "eip-712";
 import { keccak256, toHex, Hex, recoverMessageAddress} from "viem";
@@ -25,19 +25,21 @@ export const EventABIs = {
     ),
 };
 
+
 /*
  * Sets up an interface with the Swipe contract using Viem.
  */
 export function contractInterfaceSetup(privKey: string): [any, any, any] {
+    const chain = process.env.CHAIN === "sepolia" ? sepolia : foundry;
     const account = privateKeyToAccount(`0x${privKey}`);
     const walletClient = createWalletClient({
         account,
-        chain: foundry,
-        transport: http(),
+        chain: chain,
+        transport: http(process.env.RPC_URL),
     });
     const publicClient = createPublicClient({
-        chain: foundry,
-        transport: http(),
+        chain: chain,
+        transport: http(process.env.RPC_URL),
     });
     const contract = getContract({
         abi: SwipeAPI.abi,
@@ -72,7 +74,10 @@ export async function setUpContractInterfaces(
             await walletClient.sendTransaction({
                 account: walletClients[0].account,
                 to: walletClients[i].account.address,
-                value: 1000000000000000000n,
+                value: 10000000000000000n,
+                gasPrice: 1000,
+                gas: 500000n
+
             });
         }
     }
