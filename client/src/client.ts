@@ -13,6 +13,7 @@ import {
     sleep,
 } from "./lib/utils";
 import { swipeDAReqTyped, swipeMatchTyped } from "./lib/types";
+import {swipeContractAddress} from "../../contract/out/deploy.json";
 
 const DEMO_CONFIG = {
     // We use this many wallets for the demo.
@@ -205,8 +206,8 @@ async function swipe(
  */
 async function runDemo() {
 
-    console.log(process.env.CONTRACT_ADDR!)
-    await upgradeContract(process.env.CONTRACT_ADDR!);
+    console.log(swipeContractAddress)
+    await upgradeContract(swipeContractAddress);
 
     console.log("== Initializing demo wallets");
     const [walletClients, publicClients, contracts] =
@@ -223,6 +224,8 @@ async function runDemo() {
 
     console.log("== Simulating swipes");
     for (const [sender, recipient] of DEMO_CONFIG.likes) {
+        console.log("Sender is: "+ walletClients[sender].account.address);
+        console.log("Recipient is: "+ walletClients[recipient].account.address);
         await swipe(
             contracts[sender],
             walletClients[sender],
