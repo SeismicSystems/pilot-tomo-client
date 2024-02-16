@@ -10,6 +10,7 @@ import crypto from "crypto";
 import { foundry } from "viem/chains";
 import { privateKeyToAccount, PrivateKeyAccount } from "viem/accounts";
 import { getMessage } from "eip-712";
+import { keccak256, toHex, Hex, recoverMessageAddress} from "viem";
 
 import SwipeAPI from "../../../contract/out/Swipe.sol/Swipe.json" assert { type: "json" };
 import deploy from "../../../contract/out/deploy.json" assert { type: "json" };
@@ -79,44 +80,85 @@ export async function setUpContractInterfaces(
     return [walletClients, publicClients, contracts];
 }
 
-/*
- * Sign typed data according to EIP712.
- */
+
 export async function signTypedData(
     walletClient: any,
     account: PrivateKeyAccount,
     types: any,
     primaryType: string,
     domain: EIP712DomainType,
-    message: any
+    message: any,
 ): Promise<string> {
     const messageHash = hashTypedData(types, primaryType, domain, message);
+    const messageHex: Hex = `0x${messageHash}`;
     return walletClient.signMessage({
         account,
-        message: messageHash,
+        message: { raw: messageHex as `0x${string}` },
     });
 }
 
 /*
- * Hash typed data according to EIP712.
+ * Recovers the address of a signed message.
+ */
+export async function recoverTypedMessageAddress(
+    signature: any,
+    types: EIP712Types,
+    primaryType: string,
+    domain: EIP712DomainType,
+    message: any,
+): Promise<string> {
+    const messageHash = hashTypedData(types, primaryType, domain, message);
+    const messageHex: Hex = `0x${messageHash}`;
+    return recoverMessageAddress({
+        message: { raw: messageHex as `0x${string}` },
+        signature,
+    });
+}
+
+/*
+ * Hashes typed data.
  */
 export function hashTypedData(
     types: EIP712Types,
     primaryType: string,
     domain: EIP712DomainType,
-    message: any
+    message: any,
 ): string {
-    return uint8ArrayToHexString(
-        getMessage(
-            {
-                types,
-                primaryType,
-                domain: domain as unknown as Record<string, unknown>,
-                message,
-            },
-            true
-        )
-    );
+    // Function to recursively stringify values
+    function stringifyValue(value: any): string {
+        if (typeof value === "bigint") {
+            return value.toString();
+        } else if (typeof value === "object" && value !== null) {
+            if (Array.isArray(value)) {
+                return `[${value.map(stringifyValue).join(",")}]`;
+            } else {
+                const sortedKeys = Object.keys(value).sort();
+                return `{${sortedKeys.map((key) => `"${key}":${stringifyValue(value[key])}`).join(",")}}`;
+            }
+        } else {
+            return JSON.stringify(value);
+        }
+    }
+
+    // Hash the domain part
+    const domainHash = keccak256(
+        toHex(
+            domain.name +
+                "," +
+                domain.version +
+                "," +
+                domain.chainId.toString() +
+                "," +
+                domain.verifyingContract,
+        ),
+    ).substring(2);
+
+    // Convert the message to a string, handling nested objects and arrays
+    const messageString = stringifyValue(message);
+    const messageHash = keccak256(toHex(messageString)).substring(2);
+
+    // Return the final hash
+    return keccak256(`0x${domainHash}${messageHash}`).substring(2);
 }
 
 /*

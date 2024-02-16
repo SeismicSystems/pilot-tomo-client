@@ -91,6 +91,16 @@ async function davail(
     return [response.data.commitment, response.data.signature];
 }
 
+async function upgradeContract(newContractAddress: string): Promise<void> {
+    const response = await axios.post(`${process.env.ENDPOINT}/swipe/upgradecontract`, {
+        newContract: newContractAddress,
+    });
+    if (response.status !== 200) {
+        throw new Error("Could not upgrade contract");
+    }
+}
+
+
 /*
  * Registers a swipe directly to the chain by sending the hiding commitment.
  * Note that though this requires a data availability signature from Seismic,
@@ -102,7 +112,9 @@ async function registerSwipe(
     swipeCommitment: string,
     daSignature: string
 ) {
-    const unpackedSig = hexToSignature(`0x${daSignature}`);
+    console.log("DA Signature: ", daSignature);
+    
+    const unpackedSig = hexToSignature(`0x${daSignature.substring(2)}`);
     const structuredSig = {
         v: unpackedSig.v,
         r: unpackedSig.r,
@@ -192,6 +204,10 @@ async function swipe(
  * on-chain.
  */
 async function runDemo() {
+
+    console.log(process.env.CONTRACT_ADDR!)
+    await upgradeContract(process.env.CONTRACT_ADDR!);
+
     console.log("== Initializing demo wallets");
     const [walletClients, publicClients, contracts] =
         await setUpContractInterfaces(
@@ -213,6 +229,7 @@ async function runDemo() {
             walletClients[recipient],
             true
         );
+        await sleep(4000);
         console.log(`- Registered "like" between [#${sender}, #${recipient}]`);
     }
     for (const [sender, recipient] of DEMO_CONFIG.dislikes) {
@@ -222,6 +239,8 @@ async function runDemo() {
             walletClients[recipient],
             false
         );
+        await sleep(4000);
+
         console.log(
             `- Registerd "dislike" between [#${sender}, #${recipient}]`
         );
@@ -229,7 +248,7 @@ async function runDemo() {
     console.log("==");
 
     // Give transactions time to confirm
-    await sleep(5000);
+    await sleep(10000);
 
     const displayWallet = 0;
     console.log(`== Fetching matches for sample wallet ${displayWallet}`);
