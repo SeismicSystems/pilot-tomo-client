@@ -13,7 +13,7 @@ import {
     sleep,
 } from "./lib/utils";
 import { swipeDAReqTyped, swipeMatchTyped } from "./lib/types";
-import {swipeContractAddress} from "../../contract/out/deploy.json";
+import { swipeContractAddress } from "../../contract/out/deploy.json";
 
 const DEMO_CONFIG = {
     // We use this many wallets for the demo.
@@ -44,12 +44,12 @@ async function nonce(walletClient: any) {
             data: {
                 address: walletClient.account.address,
             },
-        }
+        },
     );
     if (response.status !== 200) {
         throw new Error(
             "Could not get nonce for address",
-            walletClient.account.address
+            walletClient.account.address,
         );
     }
     return response.data.nonce;
@@ -63,12 +63,14 @@ async function nonce(walletClient: any) {
 async function davail(
     walletClientSender: any,
     walletClientRecipient: any,
-    positive: boolean
+    positive: boolean,
 ): Promise<[string, string]> {
     const senderNonce = await nonce(walletClientSender);
+    console.log("Sender is: " + walletClientSender.account.address);
     const tx = {
         nonce: BigInt(senderNonce).toString(),
         body: {
+            sender: walletClientSender.account.address,
             recipient: walletClientRecipient.account.address,
             positive: positive,
             blind: sampleBlind(),
@@ -80,11 +82,12 @@ async function davail(
         swipeDAReqTyped.types,
         `${swipeDAReqTyped.label}Tx`,
         swipeDAReqTyped.domain,
-        tx
+        tx,
     );
     const response = await axios.post(`${process.env.ENDPOINT}/swipe/davail`, {
         tx: stringifyBigInts(tx),
-        signature,
+        signature: signature,
+        sender: walletClientSender.account.address,
     });
     if (response.status !== 200) {
         throw new Error("Could not acquire data availability signature");
@@ -93,14 +96,16 @@ async function davail(
 }
 
 async function upgradeContract(newContractAddress: string): Promise<void> {
-    const response = await axios.post(`${process.env.ENDPOINT}/swipe/upgradecontract`, {
-        newContract: newContractAddress,
-    });
+    const response = await axios.post(
+        `${process.env.ENDPOINT}/swipe/upgradecontract`,
+        {
+            newContract: newContractAddress,
+        },
+    );
     if (response.status !== 200) {
         throw new Error("Could not upgrade contract");
     }
 }
-
 
 /*
  * Registers a swipe directly to the chain by sending the hiding commitment.
@@ -111,10 +116,10 @@ async function upgradeContract(newContractAddress: string): Promise<void> {
 async function registerSwipe(
     contractSender: any,
     swipeCommitment: string,
-    daSignature: string
+    daSignature: string,
 ) {
     console.log("DA Signature: ", daSignature);
-    
+
     const unpackedSig = hexToSignature(`0x${daSignature.substring(2)}`);
     const structuredSig = {
         v: unpackedSig.v,
@@ -128,7 +133,7 @@ async function registerSwipe(
             structuredSig.v,
             structuredSig.r,
             structuredSig.s,
-        ])
+        ]),
     );
     if (res === null || err) {
         throw new Error(`Error registering swipe: ${err}`);
@@ -158,6 +163,7 @@ async function matches(walletClient: any) {
         nonce: BigInt(senderNonce).toString(),
         body: {
             startIndex: 0,
+            sender: walletClient.account.address,
         },
     };
     const signature = await signTypedData(
@@ -166,7 +172,7 @@ async function matches(walletClient: any) {
         swipeMatchTyped.types,
         `${swipeMatchTyped.label}Tx`,
         swipeMatchTyped.domain,
-        tx
+        tx,
     );
     const response = await axios.get(`${process.env.ENDPOINT}/swipe/matches`, {
         data: {
@@ -189,12 +195,12 @@ async function swipe(
     contractSender: any,
     walletClientSender: any,
     walletClientRecipient: any,
-    positive: boolean
+    positive: boolean,
 ) {
     const [swipeCommitment, daSignature] = await davail(
         walletClientSender,
         walletClientRecipient,
-        positive
+        positive,
     );
     registerSwipe(contractSender, swipeCommitment, daSignature);
 }
@@ -205,34 +211,35 @@ async function swipe(
  * on-chain.
  */
 async function runDemo() {
-
-    console.log(swipeContractAddress)
+    console.log(swipeContractAddress);
     await upgradeContract(swipeContractAddress);
 
     console.log("== Initializing demo wallets");
     const [walletClients, publicClients, contracts] =
         await setUpContractInterfaces(
             BigInt(`0x${process.env.WALLET1_PRIVKEY}`),
-            DEMO_CONFIG.numWallets
+            DEMO_CONFIG.numWallets,
         );
     for (const [index, walletClient] of walletClients.entries()) {
         console.log(
-            `- Wallet #${index} address: ${walletClient.account.address}`
+            `- Wallet #${index} address: ${walletClient.account.address}`,
         );
     }
     console.log("==");
 
     console.log("== Simulating swipes");
     for (const [sender, recipient] of DEMO_CONFIG.likes) {
-        console.log("Sender is: "+ walletClients[sender].account.address);
-        console.log("Recipient is: "+ walletClients[recipient].account.address);
+        console.log("Sender is: " + walletClients[sender].account.address);
+        console.log(
+            "Recipient is: " + walletClients[recipient].account.address,
+        );
         await swipe(
             contracts[sender],
             walletClients[sender],
             walletClients[recipient],
-            true
+            true,
         );
-        await sleep(4000);
+        await sleep(5000);
         console.log(`- Registered "like" between [#${sender}, #${recipient}]`);
     }
     for (const [sender, recipient] of DEMO_CONFIG.dislikes) {
@@ -240,12 +247,12 @@ async function runDemo() {
             contracts[sender],
             walletClients[sender],
             walletClients[recipient],
-            false
+            false,
         );
-        await sleep(4000);
+        await sleep(5000);
 
         console.log(
-            `- Registerd "dislike" between [#${sender}, #${recipient}]`
+            `- Registerd "dislike" between [#${sender}, #${recipient}]`,
         );
     }
     console.log("==");

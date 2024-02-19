@@ -1,40 +1,43 @@
 services:
-  contracts:
-    build:
-      context: .
-      target: contracts-local
-    environment:
-      RPC_URL: http://localhost:8545
-      ANVIL_IP_ADDR: 0.0.0.0
-    ports:
-      - 8545:8545
-    volumes:
-      - swipe-contract:/usr/src/app/contract/out
-    healthcheck:
-     test: ["CMD", "cat", "/usr/src/app/contract/out/deploy.json"]
-     interval: 5s
-     timeout: 5s
-     retries: 10
-  client:
-    build:
-        context: .
-        target: client-local
-    depends_on:
-      contracts:
-        condition: service_healthy
-    environment:
-      ENDPOINT: http://server:3001
-      RPC_URL: http://contracts:8545
-    volumes:
-      - swipe-contract:/usr/src/app/contract/out
-    networks:
-      - server
-      - default
+    contracts:
+        build:
+            context: .
+            target: contracts-local
+        environment:
+            RPC_URL: http://localhost:8545
+            ANVIL_IP_ADDR: 0.0.0.0
+        ports:
+            - 8545:8545
+        volumes:
+            - swipe-contract:/usr/src/app/contract/out
+        healthcheck:
+            test: ["CMD", "cat", "/usr/src/app/contract/out/deploy.json"]
+            interval: 5s
+            timeout: 5s
+            retries: 10
+        networks:
+            - server
+            - default
+    client:
+        build:
+            context: .
+            target: client-local
+        depends_on:
+            contracts:
+                condition: service_healthy
+        environment:
+            ENDPOINT: http://server:3001
+            RPC_URL: http://contracts:8545
+        volumes:
+            - swipe-contract:/usr/src/app/contract/out
+        networks:
+            - server
+            - default
 
 volumes:
-  swipe-contract:
+    swipe-contract:
 networks:
-  server:
-    # Use a custom driver
-    name: tomo-server-network
-    external: true
+    server:
+        # Use a custom driver
+        name: tomo-server-network
+        external: true

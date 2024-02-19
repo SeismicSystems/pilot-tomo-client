@@ -10,21 +10,24 @@ import crypto from "crypto";
 import { foundry, sepolia } from "viem/chains";
 import { privateKeyToAccount, PrivateKeyAccount } from "viem/accounts";
 import { getMessage } from "eip-712";
-import { keccak256, toHex, Hex, recoverMessageAddress} from "viem";
+import { keccak256, toHex, Hex, recoverMessageAddress } from "viem";
 
 import SwipeAPI from "../../../contract/out/Swipe.sol/Swipe.json" assert { type: "json" };
 import deploy from "../../../contract/out/deploy.json" assert { type: "json" };
-import {EIP712DomainSpec, EIP712Types, EIP712DomainType} from "./eip712.interface";
+import {
+    EIP712DomainSpec,
+    EIP712Types,
+    EIP712DomainType,
+} from "./eip712.interface";
 
 /*
  * ABIs for all events on the contract that we are interested in listening for.
  */
 export const EventABIs = {
     RegisteredSwipe: parseAbiItem(
-        "event RegisteredSwipe(address owner, uint256 commitment)"
+        "event RegisteredSwipe(address owner, uint256 commitment)",
     ),
 };
-
 
 /*
  * Sets up an interface with the Swipe contract using Viem.
@@ -56,16 +59,16 @@ export function contractInterfaceSetup(privKey: string): [any, any, any] {
  */
 export async function setUpContractInterfaces(
     seedPriv: bigint,
-    numWallets: number
+    numWallets: number,
 ): Promise<[any[], any[], any[]]> {
     let walletClients: any[] = [],
         publicClients: any[] = [],
         contracts: any[] = [];
 
     for (let i = 0; i < numWallets; i++) {
-        let freshPriv = seedPriv+BigInt(i);
+        let freshPriv = seedPriv + BigInt(i);
         const [walletClient, publicClient, contract] = contractInterfaceSetup(
-            freshPriv.toString(16)
+            freshPriv.toString(16),
         );
         walletClients.push(walletClient);
         publicClients.push(publicClient);
@@ -74,17 +77,15 @@ export async function setUpContractInterfaces(
             await walletClient.sendTransaction({
                 account: walletClients[0].account,
                 to: walletClients[i].account.address,
-                value: 10000000000000000n,
-                gasPrice: 1000,
-                gas: 500000n
-
+                value: 1000000000000000000n,
+                // gasPrice: 1000,
+                // gas: 500000n
             });
         }
     }
 
     return [walletClients, publicClients, contracts];
 }
-
 
 export async function signTypedData(
     walletClient: any,
@@ -201,7 +202,7 @@ export function stringifyBigInts(obj: any): any {
  * Wrapper for error handling for promises.
  */
 export async function handleAsync<T>(
-    promise: Promise<T>
+    promise: Promise<T>,
 ): Promise<[T, null] | [null, any]> {
     try {
         const data = await promise;
