@@ -7,18 +7,13 @@ import {
     parseAbiItem,
 } from "viem";
 import crypto from "crypto";
-import { foundry, sepolia } from "viem/chains";
+import { foundry, arbitrumSepolia } from "viem/chains";
 import { privateKeyToAccount, PrivateKeyAccount } from "viem/accounts";
-import { getMessage } from "eip-712";
-import { keccak256, toHex, Hex, recoverMessageAddress } from "viem";
+import { keccak256, toHex, Hex, recoverMessageAddress, parseGwei } from "viem";
 
 import SwipeAPI from "../../../contract/out/Swipe.sol/Swipe.json" assert { type: "json" };
 import deploy from "../../../contract/out/deploy.json" assert { type: "json" };
-import {
-    EIP712DomainSpec,
-    EIP712Types,
-    EIP712DomainType,
-} from "./eip712.interface";
+import { EIP712Types, EIP712DomainType } from "./eip712.interface";
 
 /*
  * ABIs for all events on the contract that we are interested in listening for.
@@ -33,7 +28,8 @@ export const EventABIs = {
  * Sets up an interface with the Swipe contract using Viem.
  */
 export function contractInterfaceSetup(privKey: string): [any, any, any] {
-    const chain = process.env.CHAIN === "sepolia" ? sepolia : foundry;
+    const chain =
+        process.env.CHAIN === "arbitrum-sepolia" ? arbitrumSepolia : foundry;
     const account = privateKeyToAccount(`0x${privKey}`);
     const walletClient = createWalletClient({
         account,
@@ -73,14 +69,15 @@ export async function setUpContractInterfaces(
         walletClients.push(walletClient);
         publicClients.push(publicClient);
         contracts.push(contract);
-        if (i > 0) {
-            await walletClient.sendTransaction({
-                account: walletClients[0].account,
-                to: walletClients[i].account.address,
-                value: 1000000000000000000n,
-                // gasPrice: 1000,
-                // gas: 500000n
-            });
+        if (process.env.DRIP_ETH === "true") {
+            if (i > 0) {
+                await walletClient.sendTransaction({
+                    account: walletClients[0].account,
+                    to: walletClients[i].account.address,
+                    value: 1000000000000000000n,
+                });
+                await sleep(5000);
+            }
         }
     }
 

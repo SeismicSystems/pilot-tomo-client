@@ -10,6 +10,8 @@
 
 cd ..
 
+DEV_PRIV_KEY="0x$DEV_PRIVKEY"
+
 forge create src/Seismic.sol:Seismic \
   --rpc-url $RPC_URL \
   --private-key $DEV_PRIV_KEY >deploy_stdout.txt

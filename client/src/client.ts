@@ -239,7 +239,7 @@ async function runDemo() {
             walletClients[recipient],
             true,
         );
-        await sleep(5000);
+        await sleep(10000);
         console.log(`- Registered "like" between [#${sender}, #${recipient}]`);
     }
     for (const [sender, recipient] of DEMO_CONFIG.dislikes) {
@@ -249,7 +249,7 @@ async function runDemo() {
             walletClients[recipient],
             false,
         );
-        await sleep(5000);
+        await sleep(10000);
 
         console.log(
             `- Registerd "dislike" between [#${sender}, #${recipient}]`,
@@ -258,7 +258,7 @@ async function runDemo() {
     console.log("==");
 
     // Give transactions time to confirm
-    await sleep(10000);
+    await sleep(15000);
 
     const displayWallet = 0;
     console.log(`== Fetching matches for sample wallet ${displayWallet}`);
