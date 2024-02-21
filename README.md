@@ -26,12 +26,8 @@ CONTRACT_ADDR=
 # ==
 
 # == Test wallets (all the below variables should be set without the `0x` prefix)
-# - Private key loaded with ETH for deploying contract
+# - Private key loaded with ETH for deploying contract, should have at least 10 ETH
 DEV_PRIVKEY=
-# - Sample user #1. Must have ETH in relevant network
-WALLET1_PRIVKEY=
-# - Sample user #2. Must have ETH in relevant network
-WALLET2_PRIVKEY=
 # ==
 
 # == Option to drip ETH -- you can (optionally) drip ETH to each wallet on start-up by enabling this flag to `true`

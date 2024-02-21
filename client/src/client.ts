@@ -226,7 +226,7 @@ async function getSeismicAddress(): Promise<`0x${string}`> {
  */
 async function runDemo() {
     const [walletClient, publicClient] = clientInterfaceSetup(
-        process.env.WALLET1_PRIVKEY!,
+        process.env.DEV_PRIVKEY!,
     );
 
     const seismicAddress = await getSeismicAddress();
@@ -249,7 +249,7 @@ async function runDemo() {
     console.log("== Initializing demo wallets");
     const [walletClients, publicClients, contracts] =
         await setUpContractInterfaces(
-            BigInt(`0x${process.env.WALLET1_PRIVKEY}`),
+            BigInt(`0x${process.env.DEV_PRIVKEY}`),
             DEMO_CONFIG.numWallets,
             swipeContractAddress,
         );
@@ -308,7 +308,7 @@ async function runDemo() {
 }
 
 (async () => {
-    if (!process.env.WALLET1_PRIVKEY) {
+    if (!process.env.DEV_PRIVKEY) {
         throw new Error("Please set demo privkey env variable.");
     }
     await runDemo();
