@@ -8,10 +8,11 @@ import { EventABIs, contractInterfaceSetup } from "./lib/utils";
  */
 let [_, publicClient, contract] = contractInterfaceSetup(
     process.env.DEV_PRIVKEY || "",
+    `0x${process.env.CONTRACT_ADDR}`,
 );
 Object.values(EventABIs).forEach((abi) => {
     publicClient.watchEvent({
-        address: contract.address,
+        // address: contract.address,
         event: abi,
         strict: true,
         onLogs: (logs: [any]) => {

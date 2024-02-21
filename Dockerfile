@@ -52,7 +52,7 @@ COPY .env .
 CMD cd client && pnpm listen
 
 
-FROM node:${NODE_VERSION} as client-sepoliya
+FROM node:${NODE_VERSION} as client-arbitrum-sepolia
 RUN apt-get update
 RUN --mount=type=cache,target=/root/.npm \
     npm install -g pnpm@${PNPM_VERSION} &&\
@@ -70,8 +70,7 @@ RUN --mount=type=bind,source=client/package.json,target=client/package.json \
 
 COPY contract contract
 COPY .env .
-RUN cd contract && . /root/.bashrc && forge build &&\
-    cd script && sh deploy.sh
+RUN cd contract && . /root/.bashrc && forge build
 COPY client client
 
 CMD cd client && pnpm listen

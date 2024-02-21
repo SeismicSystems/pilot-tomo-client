@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
 
 import axios from "axios";
-import { hexToSignature } from "viem";
+import { hexToSignature, recoverTypedDataAddress } from "viem";
 
 import {
     setUpContractInterfaces,
@@ -11,9 +11,19 @@ import {
     stringifyBigInts,
     sampleBlind,
     sleep,
+    recoverTypedMessageAddress,
+    clientInterfaceSetup,
+    getDeployedAddress,
 } from "./lib/utils";
 import { swipeDAReqTyped, swipeMatchTyped } from "./lib/types";
-import { swipeContractAddress } from "../../contract/out/deploy.json";
+//import { swipeContractAddress } from "../../contract/out/deploy.json";
+import {
+    abi as SwipeABI,
+    bytecode as SwipeBytecode,
+} from "../../contract/out/Swipe.sol/Swipe.json";
+import { get } from "http";
+
+const SwipeBytecodeFormatted: `0x${string}` = `0x${SwipeBytecode.object.replace(/^0x/, "")}`;
 
 const DEMO_CONFIG = {
     // We use this many wallets for the demo.
@@ -70,7 +80,6 @@ async function davail(
     const tx = {
         nonce: BigInt(senderNonce).toString(),
         body: {
-            sender: walletClientSender.account.address,
             recipient: walletClientRecipient.account.address,
             positive: positive,
             blind: sampleBlind(),
@@ -82,12 +91,24 @@ async function davail(
         swipeDAReqTyped.types,
         `${swipeDAReqTyped.label}Tx`,
         swipeDAReqTyped.domain,
-        tx,
+        stringifyBigInts(tx),
     );
+    console.log("The signature is: " + signature);
+    console.log("The tx is: " + JSON.stringify(stringifyBigInts(tx)));
+    console.log(
+        "The recovered address is: " +
+            (await recoverTypedMessageAddress(
+                signature,
+                swipeDAReqTyped.types,
+                `${swipeDAReqTyped.label}Tx`,
+                swipeDAReqTyped.domain,
+                stringifyBigInts(tx),
+            )),
+    );
+
     const response = await axios.post(`${process.env.ENDPOINT}/swipe/davail`, {
         tx: stringifyBigInts(tx),
         signature: signature,
-        sender: walletClientSender.account.address,
     });
     if (response.status !== 200) {
         throw new Error("Could not acquire data availability signature");
@@ -163,7 +184,6 @@ async function matches(walletClient: any) {
         nonce: BigInt(senderNonce).toString(),
         body: {
             startIndex: 0,
-            sender: walletClient.account.address,
         },
     };
     const signature = await signTypedData(
@@ -205,13 +225,43 @@ async function swipe(
     registerSwipe(contractSender, swipeCommitment, daSignature);
 }
 
+async function getSeismicAddress(): Promise<`0x${string}`> {
+    const response = await axios.get(
+        `${process.env.ENDPOINT}/swipe/getseismicaddress`,
+    );
+    if (response.status !== 200) {
+        throw new Error("Could not get Seismic address");
+    }
+    return response.data.seismicTomoContractAddress;
+}
+
 /*
  * Simulates wallet interactions specified in DEMO_CONFIG. Runs through the
  * Seismic flow for each swipe, then logs the matches that were confirmed
  * on-chain.
  */
 async function runDemo() {
-    console.log(swipeContractAddress);
+    const [walletClient, publicClient] = clientInterfaceSetup(
+        process.env.WALLET1_PRIVKEY!,
+    );
+
+    const seismicAddress = await getSeismicAddress();
+
+    console.log(seismicAddress);
+
+    await walletClient.deployContract({
+        abi: SwipeABI,
+        bytecode: SwipeBytecodeFormatted,
+        args: [seismicAddress],
+    });
+
+    const swipeContractAddress = await getDeployedAddress(
+        publicClient,
+        walletClient.account.address,
+    );
+
+    console.log("== Deployed contract at address: " + swipeContractAddress);
+
     await upgradeContract(swipeContractAddress);
 
     console.log("== Initializing demo wallets");
@@ -219,6 +269,7 @@ async function runDemo() {
         await setUpContractInterfaces(
             BigInt(`0x${process.env.WALLET1_PRIVKEY}`),
             DEMO_CONFIG.numWallets,
+            swipeContractAddress,
         );
     for (const [index, walletClient] of walletClients.entries()) {
         console.log(
