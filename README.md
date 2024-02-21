@@ -26,51 +26,27 @@ CONTRACT_ADDR=
 # ==
 
 # == Test wallets (all the below variables should be set without the `0x` prefix)
-# - Private key loaded with ETH for deploying contract, should have at least 10 ETH
+# - Private key loaded with ETH for deploying contract, should have at least 10 Sepolia ETH
 DEV_PRIVKEY=
 # ==
 
-# == Option to drip ETH -- you can (optionally) drip ETH to each wallet on start-up by enabling this flag to `true`
+# == Derive demo wallets
+# - Demo uses DEV_PRIVKEY to derive 5 privkeys. On the first run, you need to drip ETH to these privkeys. Subsequent runs should set this to `false`
 DRIP_ETH=
 # ==
 ```
 
-In case you are running the demo with the sequencer on the EC2 instance, you need to modify the `compose.yaml` file by setting
+### Docker mode
 
-```
-...
-        environment:
-            ENDPOINT: http://44.203.177.203:3001
-        networks:
-            # - server
-            - default
-...
-```
-
-### Docker mode: local network (Anvil)
-
-Within Docker mode, if you choose to run this demo on a local network, e.g. Anvil, then run the following command:
-
-```
-docker-compose -f local-compose.yaml up --build
-```
-
-After this, open a new terminal window to start the client by running the following command:
-
-```
-docker-compose exec -it client sh
-cd client && pnpm dev
-```
-
-### Docker mode: testnet (Arbitrum Sepolia)
-
-Within Docker mode, if you choose to run this demo on a testnet, e.g. Arbitrum Sepolia, then run the following command:
+This demo runs on the Arbitrum Sepolia testnet. Run the following command to deploy Tomo's Swipe contract:
 
 ```
 docker-compose up --build
 ```
 
-After this, open a new terminal window to start the client by running the following command:
+The above command also starts an event listener so you can see what's going on in the contract. You should keep this running for the next step.
+
+Now open a new terminal window to start the client by running the following command:
 
 ```
 docker-compose exec -it client bash
