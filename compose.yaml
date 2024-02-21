@@ -4,10 +4,8 @@ services:
             context: .
             target: client-arbitrum-sepolia
         environment:
-            #ENDPOINT: http://server:3001
             ENDPOINT: http://44.203.177.203:3001
         networks:
-            # - server # comment this out if working with AWS
             - default
         healthcheck:
             test: ["CMD", "cat", "/usr/src/app/contract/out/deploy.json"]

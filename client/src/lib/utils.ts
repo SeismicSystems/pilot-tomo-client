@@ -84,7 +84,7 @@ export async function setUpContractInterfaces(
                 await walletClient.sendTransaction({
                     account: walletClients[0].account,
                     to: walletClients[i].account.address,
-                    value: 1000000000000000000n,
+                    value: 10000000000000000n,
                 });
                 await sleep(5000);
             }

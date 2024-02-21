@@ -146,19 +146,6 @@ async function registerSwipe(
 }
 
 /*
- * Checks whether the matches provided by Seismic are true to what the user
- * registerd on-chain. Removes the trust assumption on Seismic for providing
- * honest swipes.
- *
- * Though state provenance is not the primary use-case of Tomo's blockchain
- * component (composability is), this is still a good step to do, especially
- * as more of Tomo's workflow transitions on-chain.
- */
-async function verifyCounterpartySwipes(matches: any) {
-    // [TODO]
-}
-
-/*
  * Fetches matches of a wallet from Seismic and checks whether they're
  * consistent with what's actually shown on-chain.
  */
@@ -187,7 +174,6 @@ async function matches(walletClient: any) {
     if (response.status !== 200) {
         throw new Error("Could not request matches.");
     }
-    await verifyCounterpartySwipes(response.data);
     return response.data;
 }
 
@@ -209,6 +195,9 @@ async function swipe(
     registerSwipe(contractSender, swipeCommitment, daSignature);
 }
 
+/*
+ * Queries Seismic node for the latest SeismicTomo contract address.
+ */
 async function getSeismicAddress(): Promise<`0x${string}`> {
     const response = await axios.get(
         `${process.env.ENDPOINT}/swipe/getseismicaddress`,
@@ -242,7 +231,9 @@ async function runDemo() {
         walletClient.account.address,
     );
 
-    console.log("== Deployed contract at address: " + swipeContractAddress);
+    console.log("== Deploying Swipe contract");
+    console.log("- Address:", swipeContractAddress);
+    console.log("==");
 
     await upgradeContract(swipeContractAddress);
 
@@ -262,12 +253,6 @@ async function runDemo() {
 
     console.log("== Simulating swipes");
     for (const [sender, recipient] of DEMO_CONFIG.likes) {
-        console.log(
-            "   == Sender is: " + walletClients[sender].account.address,
-        );
-        console.log(
-            "   == Recipient is: " + walletClients[recipient].account.address,
-        );
         await swipe(
             contracts[sender],
             walletClients[sender],
@@ -278,12 +263,6 @@ async function runDemo() {
         console.log(`- Registered "like" between [#${sender}, #${recipient}]`);
     }
     for (const [sender, recipient] of DEMO_CONFIG.dislikes) {
-        console.log(
-            "   == Sender is: " + walletClients[sender].account.address,
-        );
-        console.log(
-            "   == Recipient is: " + walletClients[recipient].account.address,
-        );
         await swipe(
             contracts[sender],
             walletClients[sender],

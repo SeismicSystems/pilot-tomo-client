@@ -26,7 +26,7 @@ CONTRACT_ADDR=
 # ==
 
 # == Test wallets (all the below variables should be set without the `0x` prefix)
-# - Private key loaded with ETH for deploying contract, should have at least 10 ETH
+# - Private key loaded with ETH for deploying contract, should have at least 1 ETH
 DEV_PRIVKEY=
 # ==
 
