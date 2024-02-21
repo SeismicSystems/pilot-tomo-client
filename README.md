@@ -21,7 +21,7 @@ SEQUENCER_ADDR=
 VERSION=
 # - Chain ID
 CHAIN_ID=
-# - Address of swipe contract
+# - Address of swipe contract (dummy for now)
 CONTRACT_ADDR=
 # ==
 
@@ -37,6 +37,18 @@ WALLET2_PRIVKEY=
 # == Option to drip ETH -- you can (optionally) drip ETH to each wallet on start-up by enabling this flag to `true`
 DRIP_ETH=
 # ==
+```
+
+In case you are running the demo with the sequencer on the EC2 instance, you need to modify the `compose.yaml` file by setting
+
+```
+...
+        environment:
+            ENDPOINT: http://44.203.177.203:3001
+        networks:
+            # - server
+            - default
+...
 ```
 
 ### Docker mode: local network (Anvil)

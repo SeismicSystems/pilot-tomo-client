@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
 
 import axios from "axios";
-import { hexToSignature, recoverTypedDataAddress } from "viem";
+import { hexToSignature } from "viem";
 
 import {
     setUpContractInterfaces,
@@ -11,7 +11,6 @@ import {
     stringifyBigInts,
     sampleBlind,
     sleep,
-    recoverTypedMessageAddress,
     clientInterfaceSetup,
     getDeployedAddress,
 } from "./lib/utils";
@@ -76,7 +75,6 @@ async function davail(
     positive: boolean,
 ): Promise<[string, string]> {
     const senderNonce = await nonce(walletClientSender);
-    console.log("Sender is: " + walletClientSender.account.address);
     const tx = {
         nonce: BigInt(senderNonce).toString(),
         body: {
@@ -92,18 +90,6 @@ async function davail(
         `${swipeDAReqTyped.label}Tx`,
         swipeDAReqTyped.domain,
         stringifyBigInts(tx),
-    );
-    console.log("The signature is: " + signature);
-    console.log("The tx is: " + JSON.stringify(stringifyBigInts(tx)));
-    console.log(
-        "The recovered address is: " +
-            (await recoverTypedMessageAddress(
-                signature,
-                swipeDAReqTyped.types,
-                `${swipeDAReqTyped.label}Tx`,
-                swipeDAReqTyped.domain,
-                stringifyBigInts(tx),
-            )),
     );
 
     const response = await axios.post(`${process.env.ENDPOINT}/swipe/davail`, {
@@ -139,8 +125,6 @@ async function registerSwipe(
     swipeCommitment: string,
     daSignature: string,
 ) {
-    console.log("DA Signature: ", daSignature);
-
     const unpackedSig = hexToSignature(`0x${daSignature.substring(2)}`);
     const structuredSig = {
         v: unpackedSig.v,
@@ -247,8 +231,6 @@ async function runDemo() {
 
     const seismicAddress = await getSeismicAddress();
 
-    console.log(seismicAddress);
-
     await walletClient.deployContract({
         abi: SwipeABI,
         bytecode: SwipeBytecodeFormatted,
@@ -280,9 +262,11 @@ async function runDemo() {
 
     console.log("== Simulating swipes");
     for (const [sender, recipient] of DEMO_CONFIG.likes) {
-        console.log("Sender is: " + walletClients[sender].account.address);
         console.log(
-            "Recipient is: " + walletClients[recipient].account.address,
+            "   == Sender is: " + walletClients[sender].account.address,
+        );
+        console.log(
+            "   == Recipient is: " + walletClients[recipient].account.address,
         );
         await swipe(
             contracts[sender],
@@ -294,6 +278,12 @@ async function runDemo() {
         console.log(`- Registered "like" between [#${sender}, #${recipient}]`);
     }
     for (const [sender, recipient] of DEMO_CONFIG.dislikes) {
+        console.log(
+            "   == Sender is: " + walletClients[sender].account.address,
+        );
+        console.log(
+            "   == Recipient is: " + walletClients[recipient].account.address,
+        );
         await swipe(
             contracts[sender],
             walletClients[sender],
@@ -303,7 +293,7 @@ async function runDemo() {
         await sleep(10000);
 
         console.log(
-            `- Registerd "dislike" between [#${sender}, #${recipient}]`,
+            `- Registered "dislike" between [#${sender}, #${recipient}]`,
         );
     }
     console.log("==");

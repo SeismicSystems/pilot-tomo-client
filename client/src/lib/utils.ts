@@ -14,12 +14,10 @@ import {
     toHex,
     Hex,
     recoverMessageAddress,
-    parseGwei,
     getContractAddress,
 } from "viem";
 
 import SwipeAPI from "../../../contract/out/Swipe.sol/Swipe.json" assert { type: "json" };
-//import deploy from "../../../contract/out/deploy.json" assert { type: "json" };
 import { EIP712Types, EIP712DomainType } from "./eip712.interface";
 
 /*
@@ -222,15 +220,6 @@ export async function handleAsync<T>(
     } catch (error) {
         return [null, error];
     }
-}
-
-/*
- * Convert a uint8 array to a hex string.
- */
-function uint8ArrayToHexString(byteArray: Uint8Array): string {
-    return Array.from(byteArray, function (byte) {
-        return ("0" + (byte & 0xff).toString(16)).slice(-2);
-    }).join("");
 }
 
 /*

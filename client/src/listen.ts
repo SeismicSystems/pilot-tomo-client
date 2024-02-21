@@ -12,7 +12,6 @@ let [_, publicClient, contract] = contractInterfaceSetup(
 );
 Object.values(EventABIs).forEach((abi) => {
     publicClient.watchEvent({
-        // address: contract.address,
         event: abi,
         strict: true,
         onLogs: (logs: [any]) => {
