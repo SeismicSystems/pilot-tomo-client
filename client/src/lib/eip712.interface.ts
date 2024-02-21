@@ -29,7 +29,7 @@ export const EIP712DomainSpec = [
  */
 export function createEIP712Types(
     bodyType: string,
-    bodySpec: { name: string; type: string }[]
+    bodySpec: { name: string; type: string }[],
 ) {
     return {
         EIP712Domain: EIP712DomainSpec,

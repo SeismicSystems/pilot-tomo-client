@@ -7,39 +7,50 @@ import {
     parseAbiItem,
 } from "viem";
 import crypto from "crypto";
-import { foundry } from "viem/chains";
-import { privateKeyToAccount } from "viem/accounts";
-import { getMessage } from "eip-712";
+import { foundry, arbitrumSepolia } from "viem/chains";
+import { privateKeyToAccount, PrivateKeyAccount } from "viem/accounts";
+import {
+    keccak256,
+    toHex,
+    Hex,
+    recoverMessageAddress,
+    getContractAddress,
+} from "viem";
 
 import SwipeAPI from "../../../contract/out/Swipe.sol/Swipe.json" assert { type: "json" };
-import deploy from "../../../contract/out/deploy.json" assert { type: "json" };
+import { EIP712Types, EIP712DomainType } from "./eip712.interface";
 
 /*
  * ABIs for all events on the contract that we are interested in listening for.
  */
 export const EventABIs = {
     RegisteredSwipe: parseAbiItem(
-        "event RegisteredSwipe(address owner, uint256 commitment)"
+        "event RegisteredSwipe(address owner, uint256 commitment)",
     ),
 };
 
 /*
  * Sets up an interface with the Swipe contract using Viem.
  */
-export function contractInterfaceSetup(privKey: string): [any, any, any] {
+export function contractInterfaceSetup(
+    privKey: string,
+    address: Address,
+): [any, any, any] {
+    const chain =
+        process.env.CHAIN === "arbitrum-sepolia" ? arbitrumSepolia : foundry;
     const account = privateKeyToAccount(`0x${privKey}`);
     const walletClient = createWalletClient({
         account,
-        chain: foundry,
-        transport: http(),
+        chain: chain,
+        transport: http(process.env.RPC_URL),
     });
     const publicClient = createPublicClient({
-        chain: foundry,
-        transport: http(),
+        chain: chain,
+        transport: http(process.env.RPC_URL),
     });
     const contract = getContract({
         abi: SwipeAPI.abi,
-        address: deploy.swipeContractAddress as Address,
+        address: address,
         walletClient,
         publicClient,
     });
@@ -51,9 +62,10 @@ export function contractInterfaceSetup(privKey: string): [any, any, any] {
  * Also handles dripping these wallets with 1ETH each to pay for gas.
  */
 export async function setUpContractInterfaces(
-    seedPriv: BigInt,
-    numWallets: number
-): [any[], any[], any[]] {
+    seedPriv: bigint,
+    numWallets: number,
+    address: Address,
+): Promise<[any[], any[], any[]]> {
     let walletClients: any[] = [],
         publicClients: any[] = [],
         contracts: any[] = [];
@@ -61,17 +73,21 @@ export async function setUpContractInterfaces(
     for (let i = 0; i < numWallets; i++) {
         let freshPriv = seedPriv + BigInt(i);
         const [walletClient, publicClient, contract] = contractInterfaceSetup(
-            freshPriv.toString(16)
+            freshPriv.toString(16),
+            address,
         );
         walletClients.push(walletClient);
         publicClients.push(publicClient);
         contracts.push(contract);
-        if (i > 0) {
-            await walletClient.sendTransaction({
-                account: walletClients[0].account,
-                to: walletClients[i].account.address,
-                value: 1000000000000000000n,
-            });
+        if (process.env.DRIP_ETH === "true") {
+            if (i > 0) {
+                await walletClient.sendTransaction({
+                    account: walletClients[0].account,
+                    to: walletClients[i].account.address,
+                    value: 10000000000000000n,
+                });
+                await sleep(5000);
+            }
         }
     }
 
@@ -79,7 +95,7 @@ export async function setUpContractInterfaces(
 }
 
 /*
- * Sign typed data according to EIP712.
+ * Sign typed data
  */
 export async function signTypedData(
     walletClient: any,
@@ -87,35 +103,78 @@ export async function signTypedData(
     types: any,
     primaryType: string,
     domain: EIP712DomainType,
-    message: any
+    message: any,
 ): Promise<string> {
     const messageHash = hashTypedData(types, primaryType, domain, message);
+    const messageHex: Hex = `0x${messageHash}`;
     return walletClient.signMessage({
         account,
-        message: messageHash,
+        message: { raw: messageHex as `0x${string}` },
     });
 }
 
 /*
- * Hash typed data according to EIP712.
+ * Recovers the address of a signed message.
+ */
+export async function recoverTypedMessageAddress(
+    signature: any,
+    types: EIP712Types,
+    primaryType: string,
+    domain: EIP712DomainType,
+    message: any,
+): Promise<string> {
+    const messageHash = hashTypedData(types, primaryType, domain, message);
+    const messageHex: Hex = `0x${messageHash}`;
+    return recoverMessageAddress({
+        message: { raw: messageHex as `0x${string}` },
+        signature,
+    });
+}
+
+/*
+ * Hashes typed data.
  */
 export function hashTypedData(
     types: EIP712Types,
     primaryType: string,
     domain: EIP712DomainType,
-    message: any
+    message: any,
 ): string {
-    return uint8ArrayToHexString(
-        getMessage(
-            {
-                types,
-                primaryType,
-                domain: domain as unknown as Record<string, unknown>,
-                message,
-            },
-            true
-        )
-    );
+    // Function to recursively stringify values
+    function stringifyValue(value: any): string {
+        if (typeof value === "bigint") {
+            return value.toString();
+        } else if (typeof value === "object" && value !== null) {
+            if (Array.isArray(value)) {
+                return `[${value.map(stringifyValue).join(",")}]`;
+            } else {
+                const sortedKeys = Object.keys(value).sort();
+                return `{${sortedKeys.map((key) => `"${key}":${stringifyValue(value[key])}`).join(",")}}`;
+            }
+        } else {
+            return JSON.stringify(value);
+        }
+    }
+
+    // Hash the domain part
+    const domainHash = keccak256(
+        toHex(
+            domain.name +
+                "," +
+                domain.version +
+                "," +
+                domain.chainId.toString() +
+                "," +
+                domain.verifyingContract,
+        ),
+    ).substring(2);
+
+    // Convert the message to a string, handling nested objects and arrays
+    const messageString = stringifyValue(message);
+    const messageHash = keccak256(toHex(messageString)).substring(2);
+
+    // Return the final hash
+    return keccak256(`0x${domainHash}${messageHash}`).substring(2);
 }
 
 /*
@@ -133,7 +192,7 @@ export function sleep(ms: number) {
 }
 
 /*
- * Stringifies all BigInts in a nested object.
+ * Recursively stringifies any BigInts present in a nested object.
  */
 export function stringifyBigInts(obj: any): any {
     if (typeof obj !== "object") {
@@ -153,7 +212,7 @@ export function stringifyBigInts(obj: any): any {
  * Wrapper for error handling for promises.
  */
 export async function handleAsync<T>(
-    promise: Promise<T>
+    promise: Promise<T>,
 ): Promise<[T, null] | [null, any]> {
     try {
         const data = await promise;
@@ -164,10 +223,42 @@ export async function handleAsync<T>(
 }
 
 /*
- * Convert a uint8 array to a hex string.
+ * Set up a wallet client for the user.
  */
-function uint8ArrayToHexString(byteArray: Uint8Array): string {
-    return Array.from(byteArray, function (byte) {
-        return ("0" + (byte & 0xff).toString(16)).slice(-2);
-    }).join("");
+
+export function clientInterfaceSetup(privKey: string): [any, any] {
+    const chain =
+        process.env.CHAIN === "arbitrum-sepolia" ? arbitrumSepolia : foundry;
+    const account = privateKeyToAccount(`0x${privKey}`);
+    const walletClient = createWalletClient({
+        account,
+        chain: chain,
+        transport: http(process.env.RPC_URL),
+    });
+    const publicClient = createPublicClient({
+        chain: chain,
+        transport: http(process.env.RPC_URL),
+    });
+    return [walletClient, publicClient];
+}
+
+/*
+ * Returns the address of the contract that was deployed by the wallet client.
+ */
+export async function getDeployedAddress(
+    publicClient: any,
+    address: `0x${string}`,
+): Promise<`0x${string}`> {
+    const nonce = BigInt(
+        await publicClient.getTransactionCount({
+            address: address,
+        }),
+    );
+
+    const deployedAddress = getContractAddress({
+        from: address,
+        nonce: nonce - BigInt(1),
+    });
+
+    return deployedAddress;
 }
