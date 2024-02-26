@@ -4,7 +4,7 @@
 
 You can run this demo in either Docker mode (recommended) or manual mode.
 
-### For both Docker and manual mode
+## For both Docker and manual mode
 
 Set the following environment variables in a `.env` file in the root directory (this one):
 
@@ -39,38 +39,33 @@ DRIP_ETH=
 # ==
 ```
 
-### Docker mode: local network (Anvil)
+## For Docker
 
-Within Docker mode, if you choose to run this demo on a local network, e.g. Anvil, then run the following command:
+### Prequisite
+1. Make sure docker compose is install. There are 2 versions available for v1(docker-compose) & v2(docker compose). Try to use docker compose version 2 for this.
+   1. [Guide to install it on macos](https://docs.docker.com/desktop/install/mac-install/)
+   2. [Guide to install it on linux](https://docs.docker.com/desktop/install/linux-install/). Install based on your linux distribution (fedora, debian, ubuntu)
+      1. From July 2023, Compose v1 is no longer in new Desktop releases, so you might need to install docker compose plugin manually if you are using v1. Follow this guide to do that https://docs.docker.com/compose/install/linux/
+   3. [Guide to install it on windows](https://docs.docker.com/desktop/install/windows-install/)
+2. Make sure that docker desktop is running
 
+
+### Steps to run
+Within Docker mode, if you choose to run this demo on a local network
 ```
-docker-compose -f local-compose.yaml up --build
-```
-
-After this, open a new terminal window to start the client by running the following command:
-
-```
-docker-compose exec -it client sh
-cd client && pnpm dev
-```
-
-### Docker mode: testnet (Arbitrum Sepolia)
-
-Within Docker mode, if you choose to run this demo on a testnet, e.g. Arbitrum Sepolia, then run the following command:
-
-```
-docker-compose up --build
+docker-compose -f compose.yaml up --build
 ```
 
 After this, open a new terminal window to start the client by running the following command:
 
 ```
-docker-compose exec -it client bash
+docker-compose exec -it client bash Or docker compose exec -it client bash
 cd client && pnpm dev
 ```
 
-### Manual mode
+## Manual mode
 
+##
 1. Deploy the Swipe contract. Have an anvil node running and run the following script.
 
 ```
