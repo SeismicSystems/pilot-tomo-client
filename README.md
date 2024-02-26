@@ -49,6 +49,7 @@ DRIP_ETH=
    3. [Guide to install it on windows](https://docs.docker.com/desktop/install/windows-install/)
 2. Make sure that docker desktop is running
 
+> Note: We will use version v1(docker-compose) throughout, but if v1 command doesn't work, try v2 command(docker compose)
 
 ### Steps to run
 Within Docker mode, if you choose to run this demo on a local network
