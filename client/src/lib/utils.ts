@@ -9,10 +9,15 @@ import {
 import crypto from "crypto";
 import { foundry, arbitrumSepolia } from "viem/chains";
 import { privateKeyToAccount, PrivateKeyAccount } from "viem/accounts";
-import { keccak256, toHex, Hex, recoverMessageAddress, parseGwei } from "viem";
+import {
+    keccak256,
+    toHex,
+    Hex,
+    recoverMessageAddress,
+    getContractAddress,
+} from "viem";
 
 import SwipeAPI from "../../../contract/out/Swipe.sol/Swipe.json" assert { type: "json" };
-import deploy from "../../../contract/out/deploy.json" assert { type: "json" };
 import { EIP712Types, EIP712DomainType } from "./eip712.interface";
 
 /*
@@ -27,7 +32,10 @@ export const EventABIs = {
 /*
  * Sets up an interface with the Swipe contract using Viem.
  */
-export function contractInterfaceSetup(privKey: string): [any, any, any] {
+export function contractInterfaceSetup(
+    privKey: string,
+    address: Address,
+): [any, any, any] {
     const chain =
         process.env.CHAIN === "arbitrum-sepolia" ? arbitrumSepolia : foundry;
     const account = privateKeyToAccount(`0x${privKey}`);
@@ -42,7 +50,7 @@ export function contractInterfaceSetup(privKey: string): [any, any, any] {
     });
     const contract = getContract({
         abi: SwipeAPI.abi,
-        address: deploy.swipeContractAddress as Address,
+        address: address,
         walletClient,
         publicClient,
     });
@@ -56,6 +64,7 @@ export function contractInterfaceSetup(privKey: string): [any, any, any] {
 export async function setUpContractInterfaces(
     seedPriv: bigint,
     numWallets: number,
+    address: Address,
 ): Promise<[any[], any[], any[]]> {
     let walletClients: any[] = [],
         publicClients: any[] = [],
@@ -65,6 +74,7 @@ export async function setUpContractInterfaces(
         let freshPriv = seedPriv + BigInt(i);
         const [walletClient, publicClient, contract] = contractInterfaceSetup(
             freshPriv.toString(16),
+            address,
         );
         walletClients.push(walletClient);
         publicClients.push(publicClient);
@@ -74,7 +84,7 @@ export async function setUpContractInterfaces(
                 await walletClient.sendTransaction({
                     account: walletClients[0].account,
                     to: walletClients[i].account.address,
-                    value: 1000000000000000000n,
+                    value: 10000000000000000n,
                 });
                 await sleep(5000);
             }
@@ -84,6 +94,9 @@ export async function setUpContractInterfaces(
     return [walletClients, publicClients, contracts];
 }
 
+/*
+ * Sign typed data
+ */
 export async function signTypedData(
     walletClient: any,
     account: PrivateKeyAccount,
@@ -179,7 +192,7 @@ export function sleep(ms: number) {
 }
 
 /*
- * Stringifies all BigInts in a nested object.
+ * Recursively stringifies any BigInts present in a nested object.
  */
 export function stringifyBigInts(obj: any): any {
     if (typeof obj !== "object") {
@@ -210,10 +223,42 @@ export async function handleAsync<T>(
 }
 
 /*
- * Convert a uint8 array to a hex string.
+ * Set up a wallet client for the user.
  */
-function uint8ArrayToHexString(byteArray: Uint8Array): string {
-    return Array.from(byteArray, function (byte) {
-        return ("0" + (byte & 0xff).toString(16)).slice(-2);
-    }).join("");
+
+export function clientInterfaceSetup(privKey: string): [any, any] {
+    const chain =
+        process.env.CHAIN === "arbitrum-sepolia" ? arbitrumSepolia : foundry;
+    const account = privateKeyToAccount(`0x${privKey}`);
+    const walletClient = createWalletClient({
+        account,
+        chain: chain,
+        transport: http(process.env.RPC_URL),
+    });
+    const publicClient = createPublicClient({
+        chain: chain,
+        transport: http(process.env.RPC_URL),
+    });
+    return [walletClient, publicClient];
+}
+
+/*
+ * Returns the address of the contract that was deployed by the wallet client.
+ */
+export async function getDeployedAddress(
+    publicClient: any,
+    address: `0x${string}`,
+): Promise<`0x${string}`> {
+    const nonce = BigInt(
+        await publicClient.getTransactionCount({
+            address: address,
+        }),
+    );
+
+    const deployedAddress = getContractAddress({
+        from: address,
+        nonce: nonce - BigInt(1),
+    });
+
+    return deployedAddress;
 }

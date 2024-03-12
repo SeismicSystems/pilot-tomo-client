@@ -1,27 +1,26 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import {ISeismic} from "./interfaces/ISeismic.sol";
+import {ISeismicTomo} from "./interfaces/ISeismicTomo.sol";
 
 contract Swipe {
     
-    ISeismic seismic;
+    ISeismicTomo seismic;
     address public seismicDA;
 
     mapping(address => mapping(uint256 => bool)) public swipes;
 
     event RegisteredSwipe(address owner, uint256 commitment);
 
-    constructor(address _seismicDA, address _seismic) {
-        seismicDA = _seismicDA; 
-        seismic = ISeismic(_seismic);
+    constructor(address _seismic) {
+        seismic = ISeismicTomo(_seismic);
     }
 
     /*     
      * @dev Register a swipe.
      */
     function swipe(uint256 commitment, uint8 v, bytes32 r, bytes32 s) public {
-        require(seismic.verifySeismicSig(commitment, v, r, s, seismicDA), "Invalid signature!");
+        require(seismic.verifySeismicSig(commitment, v, r, s), "Invalid signature!");
         swipes[msg.sender][commitment]=true;
         emit RegisteredSwipe(msg.sender, commitment);
     }

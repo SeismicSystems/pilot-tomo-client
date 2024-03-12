@@ -11,9 +11,18 @@ import {
     stringifyBigInts,
     sampleBlind,
     sleep,
+    clientInterfaceSetup,
+    getDeployedAddress,
 } from "./lib/utils";
 import { swipeDAReqTyped, swipeMatchTyped } from "./lib/types";
-import { swipeContractAddress } from "../../contract/out/deploy.json";
+//import { swipeContractAddress } from "../../contract/out/deploy.json";
+import {
+    abi as SwipeABI,
+    bytecode as SwipeBytecode,
+} from "../../contract/out/Swipe.sol/Swipe.json";
+import { get } from "http";
+
+const SwipeBytecodeFormatted: `0x${string}` = `0x${SwipeBytecode.object.replace(/^0x/, "")}`;
 
 const DEMO_CONFIG = {
     // We use this many wallets for the demo.
@@ -66,11 +75,9 @@ async function davail(
     positive: boolean,
 ): Promise<[string, string]> {
     const senderNonce = await nonce(walletClientSender);
-    console.log("Sender is: " + walletClientSender.account.address);
     const tx = {
         nonce: BigInt(senderNonce).toString(),
         body: {
-            sender: walletClientSender.account.address,
             recipient: walletClientRecipient.account.address,
             positive: positive,
             blind: sampleBlind(),
@@ -82,12 +89,12 @@ async function davail(
         swipeDAReqTyped.types,
         `${swipeDAReqTyped.label}Tx`,
         swipeDAReqTyped.domain,
-        tx,
+        stringifyBigInts(tx),
     );
+
     const response = await axios.post(`${process.env.ENDPOINT}/swipe/davail`, {
         tx: stringifyBigInts(tx),
         signature: signature,
-        sender: walletClientSender.account.address,
     });
     if (response.status !== 200) {
         throw new Error("Could not acquire data availability signature");
@@ -118,8 +125,6 @@ async function registerSwipe(
     swipeCommitment: string,
     daSignature: string,
 ) {
-    console.log("DA Signature: ", daSignature);
-
     const unpackedSig = hexToSignature(`0x${daSignature.substring(2)}`);
     const structuredSig = {
         v: unpackedSig.v,
@@ -141,19 +146,6 @@ async function registerSwipe(
 }
 
 /*
- * Checks whether the matches provided by Seismic are true to what the user
- * registerd on-chain. Removes the trust assumption on Seismic for providing
- * honest swipes.
- *
- * Though state provenance is not the primary use-case of Tomo's blockchain
- * component (composability is), this is still a good step to do, especially
- * as more of Tomo's workflow transitions on-chain.
- */
-async function verifyCounterpartySwipes(matches: any) {
-    // [TODO]
-}
-
-/*
  * Fetches matches of a wallet from Seismic and checks whether they're
  * consistent with what's actually shown on-chain.
  */
@@ -163,7 +155,6 @@ async function matches(walletClient: any) {
         nonce: BigInt(senderNonce).toString(),
         body: {
             startIndex: 0,
-            sender: walletClient.account.address,
         },
     };
     const signature = await signTypedData(
@@ -183,7 +174,6 @@ async function matches(walletClient: any) {
     if (response.status !== 200) {
         throw new Error("Could not request matches.");
     }
-    await verifyCounterpartySwipes(response.data);
     return response.data;
 }
 
@@ -206,19 +196,53 @@ async function swipe(
 }
 
 /*
+ * Queries Seismic node for the latest SeismicTomo contract address.
+ */
+async function getSeismicAddress(): Promise<`0x${string}`> {
+    const response = await axios.get(
+        `${process.env.ENDPOINT}/swipe/getseismicaddress`,
+    );
+    if (response.status !== 200) {
+        throw new Error("Could not get Seismic address");
+    }
+    return response.data.seismicTomoContractAddress;
+}
+
+/*
  * Simulates wallet interactions specified in DEMO_CONFIG. Runs through the
  * Seismic flow for each swipe, then logs the matches that were confirmed
  * on-chain.
  */
 async function runDemo() {
-    console.log(swipeContractAddress);
+    const [walletClient, publicClient] = clientInterfaceSetup(
+        process.env.DEV_PRIVKEY!,
+    );
+
+    const seismicAddress = await getSeismicAddress();
+
+    await walletClient.deployContract({
+        abi: SwipeABI,
+        bytecode: SwipeBytecodeFormatted,
+        args: [seismicAddress],
+    });
+
+    const swipeContractAddress = await getDeployedAddress(
+        publicClient,
+        walletClient.account.address,
+    );
+
+    console.log("== Deploying Swipe contract");
+    console.log("- Address:", swipeContractAddress);
+    console.log("==");
+
     await upgradeContract(swipeContractAddress);
 
     console.log("== Initializing demo wallets");
     const [walletClients, publicClients, contracts] =
         await setUpContractInterfaces(
-            BigInt(`0x${process.env.WALLET1_PRIVKEY}`),
+            BigInt(`0x${process.env.DEV_PRIVKEY}`),
             DEMO_CONFIG.numWallets,
+            swipeContractAddress,
         );
     for (const [index, walletClient] of walletClients.entries()) {
         console.log(
@@ -229,10 +253,6 @@ async function runDemo() {
 
     console.log("== Simulating swipes");
     for (const [sender, recipient] of DEMO_CONFIG.likes) {
-        console.log("Sender is: " + walletClients[sender].account.address);
-        console.log(
-            "Recipient is: " + walletClients[recipient].account.address,
-        );
         await swipe(
             contracts[sender],
             walletClients[sender],
@@ -252,7 +272,7 @@ async function runDemo() {
         await sleep(10000);
 
         console.log(
-            `- Registerd "dislike" between [#${sender}, #${recipient}]`,
+            `- Registered "dislike" between [#${sender}, #${recipient}]`,
         );
     }
     console.log("==");
@@ -267,7 +287,7 @@ async function runDemo() {
 }
 
 (async () => {
-    if (!process.env.WALLET1_PRIVKEY) {
+    if (!process.env.DEV_PRIVKEY) {
         throw new Error("Please set demo privkey env variable.");
     }
     await runDemo();
