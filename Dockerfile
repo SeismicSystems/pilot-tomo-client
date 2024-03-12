@@ -25,4 +25,4 @@ COPY .env .
 RUN cd contract && . /root/.bashrc && forge build
 COPY client client
 
-CMD . /root/.bashrc && cd contract/script && sh deploy.sh && cd ../../client && pnpm listen
+CMD pnpm -C client listen
