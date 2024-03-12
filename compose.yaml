@@ -6,11 +6,6 @@ services:
     networks:
       - server
       - default
-    healthcheck:
-     test: ["CMD", "cat", "/usr/src/app/contract/out/deploy.json"]
-     interval: 5s
-     timeout: 5s
-     retries: 3
     env_file:
       - .env
 networks:
