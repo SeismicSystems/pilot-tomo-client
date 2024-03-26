@@ -6,7 +6,8 @@
     "type": "module",
     "scripts": {
         "listen": "pnpm tsx ./src/listen.ts",
-        "dev": "pnpm tsx ./src/client.ts"
+        "dev": "pnpm tsx ./src/client.ts",
+        "load-test": "pnpm tsx ./src/loadtest.ts 2 5"
     },
     "keywords": [],
     "author": "",

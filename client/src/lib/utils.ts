@@ -15,10 +15,13 @@ import {
     Hex,
     recoverMessageAddress,
     getContractAddress,
+    hexToSignature
 } from "viem";
+import axios from "axios";
 
 import SwipeAPI from "../../../contract/out/Swipe.sol/Swipe.json" assert { type: "json" };
 import { EIP712Types, EIP712DomainType } from "./eip712.interface";
+import { swipeDAReqTyped, swipeMatchTyped } from "./types";
 
 /*
  * ABIs for all events on the contract that we are interested in listening for.
@@ -62,6 +65,7 @@ export function contractInterfaceSetup(
  * Also handles dripping these wallets with 1ETH each to pay for gas.
  */
 export async function setUpContractInterfaces(
+    threadNum: number,
     seedPriv: bigint,
     numWallets: number,
     address: Address,
@@ -70,7 +74,7 @@ export async function setUpContractInterfaces(
         publicClients: any[] = [],
         contracts: any[] = [];
 
-    for (let i = 0; i < numWallets; i++) {
+    for (let i = 0; i < numWallets*threadNum; i++) {
         let freshPriv = seedPriv + BigInt(i);
         const [walletClient, publicClient, contract] = contractInterfaceSetup(
             freshPriv.toString(16),
@@ -81,6 +85,7 @@ export async function setUpContractInterfaces(
         contracts.push(contract);
         if (process.env.DRIP_ETH === "true") {
             if (i > 0) {
+                console.log("Dripping ETH to wallet number", i);
                 await walletClient.sendTransaction({
                     account: walletClients[0].account,
                     to: walletClients[i].account.address,
@@ -261,4 +266,170 @@ export async function getDeployedAddress(
     });
 
     return deployedAddress;
+}
+
+/*
+ * Seismic tracks a nonce for each wallet to avoid replay attacks. Note this is
+ * NOT the nonce that Ethereum tracks for the wallet.
+ */
+export async function nonce(walletClient: any) {
+    const response = await axios.get(
+        `${process.env.ENDPOINT}/authentication/nonce`,
+        {
+            data: {
+                address: walletClient.account.address,
+            },
+        },
+    );
+    if (response.status !== 200) {
+        throw new Error(
+            "Could not get nonce for address",
+            walletClient.account.address,
+        );
+    }
+    return response.data.nonce;
+}
+
+/*
+ * Seismic must be alerted of the intended swipe prior to posting it on-chain.
+ * This is enforced via a data availability signaturew which is checked in the
+ * contract.
+ */
+export async function davail(
+    walletClientSender: any,
+    walletClientRecipient: any,
+    positive: boolean,
+): Promise<[string, string]> {
+    const senderNonce = await nonce(walletClientSender);
+    const tx = {
+        nonce: BigInt(senderNonce).toString(),
+        body: {
+            recipient: walletClientRecipient.account.address,
+            positive: positive,
+            blind: sampleBlind(),
+        },
+    };
+    const signature = await signTypedData(
+        walletClientSender,
+        walletClientSender.account,
+        swipeDAReqTyped.types,
+        `${swipeDAReqTyped.label}Tx`,
+        swipeDAReqTyped.domain,
+        stringifyBigInts(tx),
+    );
+
+    const response = await axios.post(`${process.env.ENDPOINT}/swipe/davail`, {
+        tx: stringifyBigInts(tx),
+        signature: signature,
+    });
+    if (response.status !== 200) {
+        throw new Error("Could not acquire data availability signature");
+    }
+    return [response.data.commitment, response.data.signature];
+}
+
+export async function upgradeContract(newContractAddress: string): Promise<void> {
+    const response = await axios.post(
+        `${process.env.ENDPOINT}/swipe/upgradecontract`,
+        {
+            newContract: newContractAddress,
+        },
+    );
+    if (response.status !== 200) {
+        throw new Error("Could not upgrade contract");
+    }
+}
+
+/*
+ * Registers a swipe directly to the chain by sending the hiding commitment.
+ * Note that though this requires a data availability signature from Seismic,
+ * the user is registering the swipe themselves. Seismic is not acting on the
+ * user's behalf.
+ */
+export async function registerSwipe(
+    contractSender: any,
+    swipeCommitment: string,
+    daSignature: string,
+) {
+    const unpackedSig = hexToSignature(`0x${daSignature.substring(2)}`);
+    const structuredSig = {
+        v: unpackedSig.v,
+        r: unpackedSig.r,
+        s: unpackedSig.s,
+        b: 0,
+    };
+    let [res, err] = await handleAsync(
+        contractSender.write.swipe([
+            BigInt(`0x${swipeCommitment}`),
+            structuredSig.v,
+            structuredSig.r,
+            structuredSig.s,
+        ]),
+    );
+    if (res === null || err) {
+        throw new Error(`Error registering swipe: ${err}`);
+    }
+}
+
+/*
+ * Fetches matches of a wallet from Seismic and checks whether they're
+ * consistent with what's actually shown on-chain.
+ */
+export async function matches(walletClient: any) {
+    const senderNonce = await nonce(walletClient);
+    const tx = {
+        nonce: BigInt(senderNonce).toString(),
+        body: {
+            startIndex: 0,
+        },
+    };
+    const signature = await signTypedData(
+        walletClient,
+        walletClient.account,
+        swipeMatchTyped.types,
+        `${swipeMatchTyped.label}Tx`,
+        swipeMatchTyped.domain,
+        tx,
+    );
+    const response = await axios.get(`${process.env.ENDPOINT}/swipe/matches`, {
+        data: {
+            tx: stringifyBigInts(tx),
+            signature,
+        },
+    });
+    if (response.status !== 200) {
+        throw new Error("Could not request matches.");
+    }
+    return response.data;
+}
+
+/*
+ * Having a "sender" swipe on a "recipient" requires the data availability
+ * share with Seismic before going directly from the client to the chain.
+ */
+export async function swipe(
+    contractSender: any,
+    walletClientSender: any,
+    walletClientRecipient: any,
+    positive: boolean,
+) {
+    const [swipeCommitment, daSignature] = await davail(
+        walletClientSender,
+        walletClientRecipient,
+        positive,
+    );
+    registerSwipe(contractSender, swipeCommitment, daSignature);
+}
+
+/*
+ * Queries Seismic node for the latest SeismicTomo contract address.
+ */
+export async function getSeismicAddress(): Promise<`0x${string}`> {
+    const response = await axios.get(
+        `${process.env.ENDPOINT}/swipe/getseismicaddress`,
+    );
+    if (response.status !== 200) {
+        throw new Error("Could not get Seismic address");
+    }
+    return response.data.seismicTomoContractAddress;
 }
