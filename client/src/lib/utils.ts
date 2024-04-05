@@ -74,6 +74,8 @@ export async function setUpContractInterfaces(
         publicClients: any[] = [],
         contracts: any[] = [];
 
+    let dripStartTime = Date.now(); // Start timing before the loop begins
+
     for (let i = 0; i < numWallets*threadNum; i++) {
         let freshPriv = seedPriv + BigInt(i);
         const [walletClient, publicClient, contract] = contractInterfaceSetup(
@@ -83,17 +85,20 @@ export async function setUpContractInterfaces(
         walletClients.push(walletClient);
         publicClients.push(publicClient);
         contracts.push(contract);
-        if (process.env.DRIP_ETH === "true") {
-            if (i > 0) {
-                console.log("Dripping ETH to wallet number", i);
-                await walletClient.sendTransaction({
-                    account: walletClients[0].account,
-                    to: walletClients[i].account.address,
-                    value: 10000000000000000n,
-                });
-                await sleep(5000);
-            }
+        if (process.env.DRIP_ETH === "true" && i > 0) {
+            console.log("Dripping ETH to wallet number", i);
+            await walletClient.sendTransaction({
+                account: walletClients[0].account,
+                to: walletClients[i].account.address,
+                value: 100000000000000000n,
+            });
         }
+    }
+
+    let dripEndTime = Date.now(); // End timing after the loop ends
+
+    if (process.env.DRIP_ETH === "true") {
+        console.log(`Dripping ETH for ${numWallets*threadNum} wallets completed in ${dripEndTime - dripStartTime}ms`);
     }
 
     return [walletClients, publicClients, contracts];
