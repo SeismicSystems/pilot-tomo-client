@@ -4,6 +4,7 @@ import {
     createPublicClient,
     getContract,
     http,
+    webSocket,
     parseAbiItem,
 } from "viem";
 import crypto from "crypto";
@@ -38,6 +39,7 @@ export const EventABIs = {
 export function contractInterfaceSetup(
     privKey: string,
     address: Address,
+    mode: string,
 ): [any, any, any] {
     const chain =
         process.env.CHAIN === "arbitrum-sepolia" ? arbitrumSepolia : foundry;
@@ -47,9 +49,10 @@ export function contractInterfaceSetup(
         chain: chain,
         transport: http(process.env.RPC_URL),
     });
+    const transportMode = mode === "websocket" ? webSocket(process.env.RPC_URL_WSS) : http(process.env.RPC_URL);
     const publicClient = createPublicClient({
         chain: chain,
-        transport: http(process.env.RPC_URL),
+        transport: transportMode,
     });
     const contract = getContract({
         abi: SwipeAPI.abi,
@@ -81,6 +84,7 @@ export async function setUpContractInterfaces(
         const [walletClient, publicClient, contract] = contractInterfaceSetup(
             freshPriv.toString(16),
             address,
+            "http",
         );
         walletClients.push(walletClient);
         publicClients.push(publicClient);

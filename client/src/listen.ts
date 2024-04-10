@@ -9,6 +9,7 @@ import { EventABIs, contractInterfaceSetup } from "./lib/utils";
 let [_, publicClient, contract] = contractInterfaceSetup(
     process.env.DEV_PRIVKEY || "",
     `0x${process.env.CONTRACT_ADDR}`,
+    "websocket"
 );
 Object.values(EventABIs).forEach((abi) => {
     publicClient.watchEvent({
