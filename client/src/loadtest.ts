@@ -45,27 +45,42 @@ async function runClientDemo(numWallets: number, threadNum: number, swipeContrac
 
     console.log("== Simulating swipes");
     for (const [sender, recipient] of DEMO_CONFIG.likes) {
-        await swipe(
-            contracts[sender],
-            walletClients[sender],
-            walletClients[recipient],
-            true,
-        );
-        await sleep(10000);
+        const startTime = Date.now();
+        try {
+            await swipe(
+                contracts[sender],
+                walletClients[sender],
+                walletClients[recipient],
+                true,
+            );
+            const endTime = Date.now();
+            console.log(`Swipe task completed in ${(endTime - startTime) / 1000}s`);
+             // await sleep(10000);
         console.log(`- Registered "like" between [#${sender}, #${recipient}]`);
+        } catch (error) {
+            console.log(`Error during swipe operation`);
+        }
+       
     }
     for (const [sender, recipient] of DEMO_CONFIG.dislikes) {
-        await swipe(
-            contracts[sender],
-            walletClients[sender],
-            walletClients[recipient],
-            false,
-        );
-        await sleep(10000);
+        try {
+            const startTime = Date.now();
+            await swipe(
+                contracts[sender],
+                walletClients[sender],
+                walletClients[recipient],
+                false,
+            );
+            const endTime = Date.now();
+            console.log(`Dislike task completed in ${endTime - startTime}ms`);
+            // await sleep(10000);
 
-        console.log(
-            `- Registered "dislike" between [#${sender}, #${recipient}]`,
-        );
+            console.log(
+                `- Registered "dislike" between [#${sender}, #${recipient}]`,
+            );
+        } catch (error) {
+            console.log(`Error during dislike operation`);
+        }
     }
     console.log("==");
 

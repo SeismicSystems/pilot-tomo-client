@@ -376,7 +376,7 @@ export async function registerSwipe(
         ]),
     );
     if (res === null || err) {
-        throw new Error(`Error registering swipe: ${err}`);
+        console.log(`Error registering swipe`);
     }
 }
 
@@ -422,12 +422,18 @@ export async function swipe(
     walletClientRecipient: any,
     positive: boolean,
 ) {
+    const startTime = Date.now();
     const [swipeCommitment, daSignature] = await davail(
         walletClientSender,
         walletClientRecipient,
         positive,
     );
-    registerSwipe(contractSender, swipeCommitment, daSignature);
+    const endTime = Date.now();
+    console.log(`davail command executed in ${endTime - startTime}ms`);
+    const commandStartTime = Date.now();
+    await registerSwipe(contractSender, swipeCommitment, daSignature);
+    const commandEndTime = Date.now();
+    console.log(`registerSwipe command executed in ${commandEndTime - commandStartTime}ms`);
 }
 
 /*

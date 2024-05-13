@@ -94,22 +94,28 @@ async function runDemo() {
 
     console.log("== Simulating swipes");
     for (const [sender, recipient] of DEMO_CONFIG.likes) {
+        const startTime = Date.now();
         await swipe(
             contracts[sender],
             walletClients[sender],
             walletClients[recipient],
             true,
         );
+        const endTime = Date.now();
+        console.log(`Swipe task completed in ${(endTime - startTime) / 1000}s`);
         await sleep(10000);
         console.log(`- Registered "like" between [#${sender}, #${recipient}]`);
     }
     for (const [sender, recipient] of DEMO_CONFIG.dislikes) {
+        const startTime = Date.now();
         await swipe(
             contracts[sender],
             walletClients[sender],
             walletClients[recipient],
             false,
         );
+        const endTime = Date.now();
+        console.log(`Swipe task completed in ${(endTime - startTime) / 1000}s`);
         await sleep(10000);
 
         console.log(
